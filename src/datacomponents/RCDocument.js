@@ -23,3 +23,5 @@ class RCDocument {
     }
 
 }
+
+export default RCDocument;

@@ -1,6 +1,8 @@
 
 
 
+
+
 class RCPage {
 
     constructor(content, cwsid) {
@@ -24,5 +26,7 @@ class RCPage {
 
         return this.content[idx];
     }
-    
+
   }
+
+  export default RCPage;

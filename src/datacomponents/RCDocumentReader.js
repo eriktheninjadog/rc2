@@ -7,7 +7,7 @@ class RCDocumentReader {
         this.pageNr = 0;
     }
 
-    getPageNr() {
+    visiblePageNr() {
         return this.pageNr;
     }
 
@@ -16,9 +16,13 @@ class RCDocumentReader {
     }
 
     nrOfPages() {
-        return this.document.nrOfPages();
+        return this.document.getNumberOfPages();
     }
 
+    setPage(idx) {
+        this.pageNr = idx;
+    }
+    
     forward() {
         this.pageNr++;
         if (this.pageNr >= this.nrOfPages())
@@ -32,6 +36,6 @@ class RCDocumentReader {
             this.pageNr = 0;
         return this.getPage();
     }
-
-
 }
+
+export default RCDocumentReader;
