@@ -13,6 +13,10 @@ class RCPage {
         this.cwsid = cwsid;
     }
 
+    getCwsId() {
+        return this.cwsid;
+    }
+
     getContent() {
         return this.content;
     }

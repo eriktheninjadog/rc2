@@ -40,6 +40,24 @@ class RCDocumentStack {
         this.loadFromLocalStorage();
     }
 
+    addArrayOfCwsAsDocument(arr) {
+        let doc = new RCDocument();
+        arr.forEach(val=>{
+            let p = new RCPage(val[2],val[0]);
+            doc.addPage(p);
+        });
+        this.push(doc);
+        this.saveToLocaLStorage();
+    }
+
+    addSingleCwsAsDocument(val) {
+        let doc = new RCDocument();
+        let p = new RCPage(val[2],val[0]);
+        doc.addPage(p);
+        this.push(doc);
+        this.saveToLocaLStorage();
+    }
+
     depth() {
         return this.stack.length;
     }

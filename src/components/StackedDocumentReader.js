@@ -5,10 +5,12 @@ import Navigation from "./Navigation";
 import { Row,Col,Button,Container } from "react-bootstrap";
 import { UserContext } from "../App";
 import RCDocumentReader from "../datacomponents/RCDocumentReader";
+import { lookUpPosition } from "./backendapi/backendcall";
 
 const StackedDocumentReader = ()=> {
 
     let items = [];
+    let cwsid = -1; 
     const [activePage,setActivePage] = useState(0);
         
     const value = React.useContext(UserContext);
@@ -21,9 +23,14 @@ const StackedDocumentReader = ()=> {
         setActivePage(idx);
     }
 
-    const lookup = (event) =>
-    {
-        console.log(event.target.id)
+    const lookup = (event) => {
+        lookUpPosition(cwsid,parseInt(event.target.id),
+            data => {
+                    value.documentStack.addArrayOfCwsAsDocument(data);
+                    console.log(data);
+                    setActivePage(0);
+
+                });
     }
 
     const pop = () => {
@@ -46,12 +53,46 @@ const StackedDocumentReader = ()=> {
         );
         }
         text = docreader.getPage().getContent();  
+        cwsid = docreader.getPage().getCwsId();
+    }
+
+    const mapHTMLToCharacter= (c,index) => {
+        if (c == '\n') {
+            return (<br></br>)
+        }
+        if (c == ' ') {
+            return (<span>&nbsp;</span>)
+        }
+        return (<span id={index} className="App"> {c}</span>);
+    }
+
+    const incFont = () => {
+        const fontSize = getComputedStyle(document.documentElement).getPropertyValue('--reading-font-size');
+        console.log(fontSize);
+        if (fontSize === '14px')  
+            document.documentElement.style.setProperty('--reading-font-size', '20px');
+            else
+            if (fontSize === '20px') 
+                document.documentElement.style.setProperty('--reading-font-size', '24px');
+            else
+                document.documentElement.style.setProperty('--reading-font-size', '20px');
+        }
+
+    const decFont = () => {
+        const fontSize = getComputedStyle(document.documentElement).getPropertyValue('--reading-font-size');
+        document.documentElement.style.setProperty('--reading-font-size', '14px');
+    }
+
+    const addQuestions = () => {
+        addQuestions(cwsid,data=>{console.log(data)})
     }
 
     return (
         <div>
             <Container>
             <Navigation></Navigation>
+            <button onClick={incFont}>+</button><button onClick={decFont}>-</button>
+            <button onClick={addQuestions}>q</button>
             <Row>
             <Col md={1}>
             <Button size="sm" variant="light" onClick={pop}>{stackDepth}||</Button>{' '}
@@ -64,7 +105,7 @@ const StackedDocumentReader = ()=> {
             <Container>
                 <div onClick={lookup}>
             {[...text].map( (c,index) => {
-                return (<span id={index}> {c}</span>);
+                return mapHTMLToCharacter(c,index)
             })}
             </div>
                 </Container>
