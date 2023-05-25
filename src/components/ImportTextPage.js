@@ -1,7 +1,7 @@
 import React from "react";
 import { UserContext } from "../App";
 import Navigation from "./Navigation";
-import { Button } from "react-bootstrap";
+import { Button, Container } from "react-bootstrap";
 import { createMockDocument } from "../datacomponents/MockDataProducer";
 import {backEndCall,addTextToBackground} from "./backendapi/backendcall";
 import { useRef } from "react";
@@ -12,6 +12,7 @@ const ImportTextPage = ()=> {
 
 
     const textarea = useRef();
+    const title = useRef();
 
     const generatedoc = ()=> {
         let m = createMockDocument();
@@ -31,10 +32,10 @@ const ImportTextPage = ()=> {
         let body = textarea.current.value;
         console.log('body ' + body)
         let source = "free input";
-        let title = "free input";
+        let atitle = title.current.value;
         let parentCWSid = -1;
         //title,source,body,parentCwsId,succecallback
-        addTextToBackground(title,source,body,-1,
+        addTextToBackground(atitle,source,body,-1,
             data => {
                 value.documentStack.addSingleCwsAsDocument(data);
                 console.log(data)}  
@@ -43,15 +44,18 @@ const ImportTextPage = ()=> {
     
     return (
         <div>
+        <Container>
             <Navigation></Navigation>
         <h1>Import Text Page</h1>    
         <button onClick={generatedoc}>document</button>    
         <button onClick={testApi}>testApi</button>  
         <br></br>
+        <input type="text" ref={title} size="80"></input>
         <textarea  ref={textarea} cols="30" rows="10">
             </textarea>
         <br></br>    
         <button  onClick={processText}> Submit</button>
+        </Container>
         </div>
     );
 }

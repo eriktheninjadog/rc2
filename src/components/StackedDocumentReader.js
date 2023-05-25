@@ -5,13 +5,17 @@ import Navigation from "./Navigation";
 import { Row,Col,Button,Container } from "react-bootstrap";
 import { UserContext } from "../App";
 import RCDocumentReader from "../datacomponents/RCDocumentReader";
-import { lookUpPosition } from "./backendapi/backendcall";
+import { directAIAnalyze,directAIAnalyzeGrammar,directAISummarize,directAISimplify,localLookup, addQuestions, getCwsById, lookUpPosition } from "./backendapi/backendcall";
+
+import {saveCardsToStorage,clearAllCards, addWordIfNotExist} from "./backendapi/flashcardengine" 
+
 
 const StackedDocumentReader = ()=> {
 
     let items = [];
     let cwsid = -1; 
     const [activePage,setActivePage] = useState(0);
+    const [storedPosition,setStoredPosition]  = useState(0);
         
     const value = React.useContext(UserContext);
     let docreader = value.documentStack.visibleDocument(value.documentStack.depth());
@@ -23,13 +27,33 @@ const StackedDocumentReader = ()=> {
         setActivePage(idx);
     }
 
+    let lastElementId = 0;
+
+    const simpleLookup = (event) => {
+        if (event.target.id == lastElementId) {
+            lookup(event);
+            return;
+        }
+        lastElementId = event.target.id;
+        console.log(event.target.innerText);
+        let res = localLookup(event.target.innerText );
+        console.log(res);
+        let r = '';
+        res.forEach(element => {
+            r = r + element[0] + '  ' + element[1] + ' ' + element[2] + '\n'
+        });
+        alert(r);
+    }
+
     const lookup = (event) => {
+        setStoredPosition(window.pageYOffset);
+        //alert(window.pageYOffset);
         lookUpPosition(cwsid,parseInt(event.target.id),
             data => {
                     value.documentStack.addArrayOfCwsAsDocument(data);
                     console.log(data);
                     setActivePage(0);
-
+                    setStackDepth(value.documentStack.depth());
                 });
     }
 
@@ -83,16 +107,74 @@ const StackedDocumentReader = ()=> {
         document.documentElement.style.setProperty('--reading-font-size', '14px');
     }
 
-    const addQuestions = () => {
+    const addQuestionsFromDocument = () => {
         addQuestions(cwsid,data=>{console.log(data)})
     }
+    const restorePosition = () => {
+        document.documentElement.scrollTop = storedPosition;
+    }
 
+    const flashCards = async ()  => {
+        let q = [];
+        getCwsById(cwsid,
+            cwsobject => {
+                cwsobject[3].forEach(word => {
+                    q.push(word);
+                })
+            }
+        );
+        clearAllCards();
+        setInterval(function () {
+            if ( q.length > 0) {
+                let w = q.pop();
+                addWordIfNotExist(w);
+                saveCardsToStorage();
+            }
+        }, 200);
+    }
+
+    //directAIAnalyze,directAIAnalyzeGrammar,directAISummarize,directAISimplify
+    const ui_directAIAnalyze = async ()  => {
+        let selection = document.getSelection();
+        if (selection == null)
+            return;
+        if (selection == undefined)
+            return;
+        let fragment = selection.toString();
+        directAIAnalyze(cwsid,fragment,
+            cws => {
+                value.documentStack.addArrayOfCwsAsDocument([cws]);
+                setStackDepth(value.documentStack.depth());
+            }
+            );
+    }
+
+    const ui_directAIAnalyzeGrammar = async () => {
+        
+    }
+
+    const ui_directAIASummarize = async () => {
+        
+    }
+
+    const ui_directAISimplify = async () => {
+        
+    }
+ 
     return (
         <div>
             <Container>
             <Navigation></Navigation>
             <button onClick={incFont}>+</button><button onClick={decFont}>-</button>
-            <button onClick={addQuestions}>q</button>
+            <button onClick={addQuestionsFromDocument}>q</button>
+            <button onClick={restorePosition}>r</button>
+            <button onClick={flashCards}>f</button>
+            <button onClick={ui_directAIAnalyze}>DA1</button>
+            <button onClick={ui_directAIAnalyzeGrammar}>DA2</button>
+            <button onClick={ui_directAIASummarize}>DA3</button>
+            <button onClick={ui_directAISimplify}>DA4</button>
+            <br></br>
+            
             <Row>
             <Col md={1}>
             <Button size="sm" variant="light" onClick={pop}>{stackDepth}||</Button>{' '}
@@ -103,7 +185,7 @@ const StackedDocumentReader = ()=> {
             </Row>
             </Container>
             <Container>
-                <div onClick={lookup}>
+                <div  onDoubleClick={lookup} onClick={simpleLookup}>
             {[...text].map( (c,index) => {
                 return mapHTMLToCharacter(c,index)
             })}

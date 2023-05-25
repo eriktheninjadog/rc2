@@ -2,10 +2,10 @@ import logo from './logo.svg';
 import './App.css';
 import { BrowserRouter,Route,Routes } from 'react-router-dom';
 import ImportTextPage from './components/ImportTextPage';
+import TextList from './components/TextList';
 import React from 'react';
 import { useState } from 'react';
 import RCDocumentStack from './datacomponents/RCDocumentStack';
-
 
 import {
   RecoilRoot,
@@ -15,6 +15,7 @@ import {
   useRecoilValue,
 } from 'recoil';
 import StackedDocumentReader from './components/StackedDocumentReader';
+import FlashCard from './components/FlashCard';
 
 export const UserContext = React.createContext(null);
 
@@ -28,8 +29,11 @@ const App = () => {
     <Routes>
         <Route path="" element={<ImportTextPage />} />
         <Route path="/import" element={<ImportTextPage />} />
+        <Route path="/texts" element={<TextList />} />
         <Route path="/reader" element={<StackedDocumentReader />} />
+        <Route path="/flash" element={<FlashCard />} />
 
+        
     </Routes>
     </UserContext.Provider>
   </BrowserRouter>
