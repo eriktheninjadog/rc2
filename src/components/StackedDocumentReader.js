@@ -150,15 +150,48 @@ const StackedDocumentReader = ()=> {
     }
 
     const ui_directAIAnalyzeGrammar = async () => {
-        
+        let selection = document.getSelection();
+        if (selection == null)
+            return;
+        if (selection == undefined)
+            return;
+        let fragment = selection.toString();
+        directAIAnalyzeGrammar(cwsid,fragment,
+            cws => {
+                value.documentStack.addArrayOfCwsAsDocument([cws]);
+                setStackDepth(value.documentStack.depth());
+            }
+            );
     }
 
     const ui_directAIASummarize = async () => {
-        
+        let selection = document.getSelection();
+        if (selection == null)
+            return;
+        if (selection == undefined)
+            return;
+        let fragment = selection.toString();
+        directAISummarize(cwsid,fragment,
+            cws => {
+                value.documentStack.addArrayOfCwsAsDocument([cws]);
+                setStackDepth(value.documentStack.depth());
+            }
+            );
     }
 
     const ui_directAISimplify = async () => {
-        
+        let selection = document.getSelection();
+        if (selection == null)
+            return;
+        if (selection == undefined)
+            return;
+        let fragment = selection.toString();
+        directAISimplify(cwsid,fragment,
+            cws => {
+                value.documentStack.addArrayOfCwsAsDocument([cws]);
+                setStackDepth(value.documentStack.depth());
+            }
+            );
     }
  
     return (
@@ -168,7 +201,7 @@ const StackedDocumentReader = ()=> {
             <button onClick={incFont}>+</button><button onClick={decFont}>-</button>
             <button onClick={addQuestionsFromDocument}>q</button>
             <button onClick={restorePosition}>r</button>
-            <button onClick={flashCards}>f</button>
+            <button onClick={flashCards}>f</button><br></br>
             <button onClick={ui_directAIAnalyze}>DA1</button>
             <button onClick={ui_directAIAnalyzeGrammar}>DA2</button>
             <button onClick={ui_directAIASummarize}>DA3</button>

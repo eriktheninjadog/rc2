@@ -28,6 +28,10 @@ const dictionaryLookup = (aword,callback)=> {
     });    
 }
 
+const updateDictionary = (chinese,jytuping,definition) =>{
+
+}
+
 const localLookup = word => {
     let ret = []
     if (localStorage.getItem('localdict') == undefined) {
@@ -167,4 +171,4 @@ const directAISimplify = async (cwsid,fragment,successcallback)  => {
 } 
 
 
-export  {directAIAnalyze,directAIAnalyzeGrammar,directAISummarize,directAISimplify,localLookup,getCwsVocabulary,dictionaryLookup,getImportedTexts,getCwsById,addQuestions,backEndCall,addTextToBackground,lookUpPosition};
+export  {updateDictionary,directAIAnalyze,directAIAnalyzeGrammar,directAISummarize,directAISimplify,localLookup,getCwsVocabulary,dictionaryLookup,getImportedTexts,getCwsById,addQuestions,backEndCall,addTextToBackground,lookUpPosition};

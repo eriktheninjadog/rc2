@@ -16,6 +16,7 @@ import {
 } from 'recoil';
 import StackedDocumentReader from './components/StackedDocumentReader';
 import FlashCard from './components/FlashCard';
+import EditDictionary from './components/EditDictionary';
 
 export const UserContext = React.createContext(null);
 
@@ -32,8 +33,7 @@ const App = () => {
         <Route path="/texts" element={<TextList />} />
         <Route path="/reader" element={<StackedDocumentReader />} />
         <Route path="/flash" element={<FlashCard />} />
-
-        
+        <Route path="/editdictionary" element={<EditDictionary />} />
     </Routes>
     </UserContext.Provider>
   </BrowserRouter>

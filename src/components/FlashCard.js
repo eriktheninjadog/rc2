@@ -55,12 +55,11 @@ const FlashCard = ()=> {
     }
 
     return (
-        <div>
-            
+        <div>            
             <Container>
                 <Navigation></Navigation>
                 <h5>{deckSize}</h5>
-                <h1>{header}</h1><br></br>
+                <h1>{header}</h1><a href={"/editdictionary?term="+header+""} >edit</a><br></br>
                 <h2>{pronounce}</h2><br></br>
                  <span>{definition}</span><br></br>    
                  <Row>
@@ -78,7 +77,6 @@ const FlashCard = ()=> {
                 <Col md={2}>
                 <Button className="btn-block mr-1 mt-1 btn-lg" onClick={randomButton}>Random</Button>                
                 </Col>
-
                 </Row>             
             </Container>
         </div>
