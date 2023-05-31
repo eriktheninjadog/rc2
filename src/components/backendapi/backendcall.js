@@ -130,11 +130,12 @@ const addTextToBackground = async (title,source,body,parentCwsId,succecallback) 
     );
 }
 
-const directAIAnalyze = async (cwsid,fragment,successcallback)  => {
+const directAIAnalyze = async (cwsid,p1,p2,successcallback)  => {
     backEndCall("direct_ai_analyze",
     {
         cwsid:cwsid,
-        fragment:fragment
+        p1:p1,
+        p2:p2
     },
     successcallback,(error) => {
         console.log(error);
@@ -142,11 +143,12 @@ const directAIAnalyze = async (cwsid,fragment,successcallback)  => {
     );
 } 
 
-const directAIAnalyzeGrammar = async (cwsid,fragment,successcallback)  => {
+const directAIAnalyzeGrammar = async (cwsid,p1,p2,successcallback)  => {
     backEndCall("direct_ai_analyze_grammar",
     {
         cwsid:cwsid,
-        fragment:fragment
+        p1:p1,
+        p2:p2
     },
     successcallback,(error) => {
         console.log(error);
@@ -154,11 +156,12 @@ const directAIAnalyzeGrammar = async (cwsid,fragment,successcallback)  => {
     );
 } 
 
-const directAISummarize = async (cwsid,fragment,successcallback)  => {
+const directAISummarize = async (cwsid,p1,p2,successcallback)  => {
     backEndCall("direct_ai_summarize",
     {
         cwsid:cwsid,
-        fragment:fragment
+        p1:p1,
+        p2:p2
     },
     successcallback,(error) => {
         console.log(error);
@@ -167,11 +170,12 @@ const directAISummarize = async (cwsid,fragment,successcallback)  => {
 } 
 
 
-const directAISimplify = async (cwsid,fragment,successcallback)  => {
+const directAISimplify = async (cwsid,p1,p2,successcallback)  => {
     backEndCall("direct_ai_simplify",
     {
         cwsid:cwsid,
-        fragment:fragment
+        p1:p1,
+        p2:p2
     },
     successcallback,(error) => {
         console.log(error);

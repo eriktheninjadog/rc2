@@ -50,6 +50,15 @@ class RCDocumentStack {
         this.saveToLocaLStorage();
     }
 
+    getExamples(wrd) {
+        let p = [];
+        this.stack.forEach(doc => {
+            console.log(' in getExamples in stack ' + doc.document);
+            doc.document.getExamples(wrd,p);
+        });
+        return p;
+    }
+
     addSingleCwsAsDocument(val) {
         let doc = new RCDocument();
         let p = new RCPage(val[2],val[0]);

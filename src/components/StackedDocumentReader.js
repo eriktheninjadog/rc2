@@ -27,13 +27,17 @@ const StackedDocumentReader = ()=> {
         setActivePage(idx);
     }
 
+    let lastLastElementId = 0;
     let lastElementId = 0;
+
+    
 
     const simpleLookup = (event) => {
         if (event.target.id == lastElementId) {
             lookup(event);
             return;
         }
+        lastLastElementId = lastElementId;
         lastElementId = event.target.id;
         console.log(event.target.innerText);
         let res = localLookup(event.target.innerText );
@@ -135,13 +139,7 @@ const StackedDocumentReader = ()=> {
 
     //directAIAnalyze,directAIAnalyzeGrammar,directAISummarize,directAISimplify
     const ui_directAIAnalyze = async ()  => {
-        let selection = document.getSelection();
-        if (selection == null)
-            return;
-        if (selection == undefined)
-            return;
-        let fragment = selection.toString();
-        directAIAnalyze(cwsid,fragment,
+        directAIAnalyze(cwsid,parseInt(lastElementId),parseInt(lastLastElementId),
             cws => {
                 value.documentStack.addArrayOfCwsAsDocument([cws]);
                 setStackDepth(value.documentStack.depth());
@@ -156,7 +154,7 @@ const StackedDocumentReader = ()=> {
         if (selection == undefined)
             return;
         let fragment = selection.toString();
-        directAIAnalyzeGrammar(cwsid,fragment,
+        directAIAnalyzeGrammar(cwsid,parseInt(lastElementId),parseInt(lastLastElementId),
             cws => {
                 value.documentStack.addArrayOfCwsAsDocument([cws]);
                 setStackDepth(value.documentStack.depth());
@@ -171,7 +169,7 @@ const StackedDocumentReader = ()=> {
         if (selection == undefined)
             return;
         let fragment = selection.toString();
-        directAISummarize(cwsid,fragment,
+        directAISummarize(cwsid,parseInt(lastElementId),parseInt(lastLastElementId),
             cws => {
                 value.documentStack.addArrayOfCwsAsDocument([cws]);
                 setStackDepth(value.documentStack.depth());
@@ -186,7 +184,7 @@ const StackedDocumentReader = ()=> {
         if (selection == undefined)
             return;
         let fragment = selection.toString();
-        directAISimplify(cwsid,fragment,
+        directAISimplify(cwsid,parseInt(lastElementId),parseInt(lastLastElementId),
             cws => {
                 value.documentStack.addArrayOfCwsAsDocument([cws]);
                 setStackDepth(value.documentStack.depth());
