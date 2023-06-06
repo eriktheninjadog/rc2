@@ -29,7 +29,7 @@ const dictionaryLookup = (aword,callback)=> {
 }
 
 const updateDictionary = (chinese,jytuping,definition) =>{
-    backEndCall("dictionarylookup",
+    backEndCall("update_dictionary",
     {
         term:chinese,
         jytuping:jytuping,

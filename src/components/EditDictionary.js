@@ -33,6 +33,11 @@ const EditDictionary = () => {
             definitionField.current.value);
     }
 
+    const plecoAction = () => {
+        let url = 'plecoapi://x-callback-url/s?q='+ encodeURI(chineseField.current.value);
+        window.open(url)
+    }
+
     return (
         <div>
             <Container>
@@ -42,7 +47,7 @@ const EditDictionary = () => {
             <textarea ref={definitionField}>
             </textarea><br></br>
             <button onClick={update}>Post</button><br></br>
-            <button>Pleco</button>
+            <button onClick={plecoAction}>Pleco</button>
             </Container>
         </div>
     );
