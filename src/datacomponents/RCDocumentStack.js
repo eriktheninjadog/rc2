@@ -13,8 +13,7 @@ class RCDocumentStack {
         var objects = ls.get('stack')
         console.log(objects)
         if (objects != null) {
-            objects.forEach(value=> {
-            
+            objects.forEach(value=> {            
                 let pageNr = value.pageNr;
                 let document = value.document;
                 console.log( document)
@@ -23,7 +22,8 @@ class RCDocumentStack {
                     page => {
                         var content = page.content;
                         var cwsid = page.cwsid;
-                        newDoc.addPage(new RCPage(content,cwsid));
+                        var cwstext = page.cwstext;
+                        newDoc.addPage(new RCPage(content,cwsid,cwstext));
                     }
                 );
                 this.push(newDoc);
@@ -42,8 +42,8 @@ class RCDocumentStack {
 
     addArrayOfCwsAsDocument(arr) {
         let doc = new RCDocument();
-        arr.forEach(val=>{
-            let p = new RCPage(val[2],val[0]);
+        arr.forEach(val=>{            
+            let p = new RCPage(val[2],val[0],val[3]);
             doc.addPage(p);
         });
         this.push(doc);
@@ -55,13 +55,26 @@ class RCDocumentStack {
         this.stack.forEach(doc => {
             console.log(' in getExamples in stack ' + doc.document);
             doc.document.getExamples(wrd,p);
+        });    
+        return p;
+    }
+
+
+    getCompleteText() {
+        let p = '';
+        this.stack.forEach(doc => {
+            for (var i =0;i< doc.nrOfPages();i++) {
+                var p = doc.document.getPage(i);
+                p = p + p.content;
+            }
         });
         return p;
     }
 
+
     addSingleCwsAsDocument(val) {
         let doc = new RCDocument();
-        let p = new RCPage(val[2],val[0]);
+        let p = new RCPage(val[2],val[0],val[3]);
         doc.addPage(p);
         this.push(doc);
         this.saveToLocaLStorage();
@@ -88,6 +101,10 @@ class RCDocumentStack {
             throw "This document stack is empty!"
         this.saveToLocaLStorage();            
         return this.stack[this.stack.length-1];
+    }
+    
+    clear() {
+        this.stack=[];
     }
 }
 

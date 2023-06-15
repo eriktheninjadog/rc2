@@ -24,14 +24,37 @@ class RCDocument {
 
     getExamples(wrd,collected) {
         this.pages.forEach( p => {
-            if (p.content.indexOf(wrd)!=-1) {
-                let start = p.content.indexOf(wrd) - 50;
+            let idxOfFound = p.content.indexOf(wrd); 
+
+            if (idxOfFound!=-1) {
+                let start = idxOfFound - 50;
+                // move start to first '。'                
                 if (start < 0) 
                     start = 0;
-                let end = p.content.indexOf(wrd) + 50;
+                let fakestart = start;
+                while (fakestart < idxOfFound) {
+                    fakestart++;
+                    if ( p.content[fakestart] == '。')
+                        start = fakestart;
+                    if ( p.content[fakestart] == '\n')
+                        start = fakestart;
+                    }
+                
+                let end = idxOfFound + 50;
+                let fakeend = end;
                 if (end > (p.content.length - 1))
                     end = p.content.length - 1;
-                collected.push(p.content.substring(start,end));
+
+                while (fakeend > idxOfFound) {
+                    fakeend--;
+                    if ( p.content[fakeend] == '。')
+                        end = end;
+                    if ( p.content[fakeend] == '\n')
+                        end = end;
+                    }
+                let ex = p.content.substring(start,end);
+                if (collected.indexOf(ex) == -1)
+                    collected.push(p.content.substring(start,end));
             }
         });
     }

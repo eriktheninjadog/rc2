@@ -3,16 +3,33 @@ import axios from "axios";
 
 import { addCardIfNotExist, saveCardsToStorage } from "./flashcardengine";
 
+import { TranslateClient, TranslateTextCommand } from "@aws-sdk/client-translate"; // ES Modules import
+
+
+
 const backEndCall = async (endpoint,parameters,successcallback, errorcallback) => {
-console.log('endpont:' + endpoint);
-console.log(parameters);
-axios.post('https://chinese.eriktamm.com/api/'+endpoint, parameters)
-  .then(function (response) {
-    successcallback(response.data.result)
-  })
-  .catch(function (error) {
-    errorcallback(error)
-  });
+    console.log('endpont:' + endpoint);
+    console.log(parameters);
+    axios.post('https://chinese.eriktamm.com/api/'+endpoint, parameters)
+    .then(function (response) {
+        successcallback(response.data.result)
+    })
+    .catch(function (error) {
+        errorcallback(error)
+    });
+}
+
+
+
+const amazonTranslateFromChinese = (chinesetext,callback) => {
+    backEndCall("translatechinese",
+    {
+        "text":chinesetext
+    },
+    callback,
+    (error) => {
+        console.log(error);
+    });
 }
 
 
@@ -86,7 +103,7 @@ const getCwsById = async (cwsid,callback) => {
 
 const lookUpPosition = async (cwsid,position,succecallback) => {
     backEndCall("lookupposition",
-    {   
+    {
         cwsid:cwsid,
         position:position
     }, 
@@ -98,7 +115,7 @@ const lookUpPosition = async (cwsid,position,succecallback) => {
 
 const getImportedTexts = async (callback) => {
     backEndCall("getimportedtexts",
-    {   
+    {
     }, 
     callback,(error) => {
         console.log(error);
@@ -107,7 +124,7 @@ const getImportedTexts = async (callback) => {
 
 const addQuestions = async (cwsid,succecallback) => {
     backEndCall("generatequestions",
-    {   
+    {
         cwsid:cwsid
     }, 
     succecallback,(error) => {
@@ -184,4 +201,4 @@ const directAISimplify = async (cwsid,p1,p2,successcallback)  => {
 } 
 
 
-export  {updateDictionary,directAIAnalyze,directAIAnalyzeGrammar,directAISummarize,directAISimplify,localLookup,getCwsVocabulary,dictionaryLookup,getImportedTexts,getCwsById,addQuestions,backEndCall,addTextToBackground,lookUpPosition};
+export  {amazonTranslateFromChinese,updateDictionary,directAIAnalyze,directAIAnalyzeGrammar,directAISummarize,directAISimplify,localLookup,getCwsVocabulary,dictionaryLookup,getImportedTexts,getCwsById,addQuestions,backEndCall,addTextToBackground,lookUpPosition};

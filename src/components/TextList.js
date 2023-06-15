@@ -18,6 +18,7 @@ const TextList = ()=> {
 
     const gettext = id =>
     {
+        value.documentStack.clear();
         getCwsById(id, returnedCws=>{
             value.documentStack.addSingleCwsAsDocument(returnedCws);
         });

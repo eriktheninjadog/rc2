@@ -3,14 +3,14 @@ import { useState,useRef } from "react";
 import Navigation from "./Navigation";
 
 import { useSearchParams } from "react-router-dom";
-import { dictionaryLookup, updateDictionary } from "./backendapi/backendcall";
+import { amazonTranslateFromChinese, dictionaryLookup, updateDictionary } from "./backendapi/backendcall";
 
 
 const EditDictionary = () => {
     
     const [searchParams] = useSearchParams();
 
-    const [chinese,setChinese] = useState('');
+    const [chinese,setChinese] = useState(searchParams.get('term'));
     const [jyutping,setJyutping] = useState('');
     const [definition,setDefinition] = useState('');
 
@@ -18,14 +18,18 @@ const EditDictionary = () => {
     const jyutpingField = useRef();
     const definitionField = useRef();
 
-    if (chinese.length == 0) {
+
+
+    if (jyutping.length == 0) {        
         dictionaryLookup(searchParams.get('term'),term =>
         {
-            chineseField.current.value = term[0];
+            chineseField.current.value = searchParams.get('term');
             jyutpingField.current.value = term[1];
             definitionField.current.value = term[2];
         })
     }
+
+    setTimeout(()=>{chineseField.current.value = searchParams.get('term');},1000);
 
     const update = async ()  => {
         updateDictionary(chineseField.current.value,
@@ -38,6 +42,14 @@ const EditDictionary = () => {
         window.open(url)
     }
 
+    const translateAction = () => {
+        amazonTranslateFromChinese(chineseField.current.value,
+            (result) => {
+                definitionField.current.value = result;
+            }
+            )
+    }
+
     return (
         <div>
             <Container>
@@ -48,6 +60,7 @@ const EditDictionary = () => {
             </textarea><br></br>
             <button onClick={update}>Post</button><br></br>
             <button onClick={plecoAction}>Pleco</button>
+            <button onClick={translateAction}>Translate</button>
             </Container>
         </div>
     );

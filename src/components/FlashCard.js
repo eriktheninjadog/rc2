@@ -10,7 +10,7 @@ import { UserContext } from "../App";
 import React from "react";
 
 import { directAIAnalyze,directAIAnalyzeGrammar,directAISummarize,directAISimplify,localLookup, addQuestions, getCwsById, lookUpPosition } from "./backendapi/backendcall";
-import { sizeOfDeck, invalidateWord,validateWord,pickWord,getJyutpingFlashcard,getDefinitionFlashcard } from "./backendapi/flashcardengine";
+import { purgeCards, sizeOfDeck, invalidateWord,validateWord,pickWord,getJyutpingFlashcard,getDefinitionFlashcard } from "./backendapi/flashcardengine";
 import context from "react-bootstrap/esm/AccordionContext";
 import RCDocumentStack from "../datacomponents/RCDocumentStack";
 
@@ -23,9 +23,7 @@ const FlashCard = ()=> {
     const [deckSize,setDeckSize] = useState(0);
     const [content,setContent] = useState('');
 
-
     const value = React.useContext(UserContext);
-
     
     const pickNewWord = () => {
         setPronounce('');
@@ -41,15 +39,32 @@ const FlashCard = ()=> {
         let examples = value.documentStack.getExamples(header);
         let r = '';
         for (var i=0;i<examples.length && i < 10;i++) {
-            r = r + examples[i] + '<br/>'         
+            r = r + examples[i] + '\n'         
         }
-        r = r.replace(header,'***'+header+'***')
+        r = r.replaceAll(header,'^<b>^'+header+'^</b>^')
         let rr ='';
+        // here we have our litle thingie
+        let htmloff = true;
         for (var j=0;j<r.length;j++) {
-            rr = rr + '<span>' + r[j] + '</span>'
+            if (r[j] == '^') {
+                htmloff = !htmloff;
+            } else {
+                if (htmloff) {
+                    if (r[j] == '\n')
+                        rr = rr + "</br>";
+                    else
+                        rr = rr + '<span>' + r[j] + '</span>'
+                }
+                else {
+                    rr = rr + r[j];
+                }
+            }
         }
-        setContent(rr);
-        
+        setContent(rr);        
+    }
+
+    const purgeNotInDocs = () => {
+        purgeCards( value.documentStack.getCompleteText());
     }
 
     const simpleLookup = (event) => {
@@ -74,6 +89,7 @@ const FlashCard = ()=> {
 
     const successButton = () => {
         validateWord(header);
+        purgeNotInDocs();
         pickNewWord();
     }
 
@@ -85,6 +101,7 @@ const FlashCard = ()=> {
     const randomButton = () => {
         validateWord(header);
     }
+
 
     if (header === '') {
         pickNewWord();        
@@ -118,7 +135,6 @@ const FlashCard = ()=> {
             </Container>
         </div>
     )
-
 }
 
 

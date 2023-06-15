@@ -4,6 +4,7 @@
   "private": true,
   "proxy": "https://chinese.eriktamm.com/",
   "dependencies": {
+    "@aws-sdk/client-translate": "^3.352.0",
     "@testing-library/jest-dom": "^5.16.5",
     "@testing-library/react": "^13.4.0",
     "@testing-library/user-event": "^13.5.0",
@@ -12,10 +13,14 @@
     "local-storage": "^2.0.0",
     "react": "^18.2.0",
     "react-bootstrap": "^2.7.4",
+    "react-bootstrap-sidebar-menu": "^2.0.3",
     "react-dom": "^18.2.0",
+    "react-floating-action-button": "^1.0.5",
+    "react-overlay-component": "^1.0.6",
     "react-router-dom": "^6.11.2",
     "react-scripts": "5.0.1",
     "react-table": "^7.8.0",
+    "react-tiny-fab": "^4.0.4",
     "reactstrap": "^9.1.10",
     "recoil": "^0.7.7",
     "web-vitals": "^2.1.4"

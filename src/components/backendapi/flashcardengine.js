@@ -4,6 +4,8 @@
 
 import { dictionaryLookup } from "./backendcall";
 
+import RCDocumentStack from "../../datacomponents/RCDocumentStack"
+
 const localStorageKey ="flashcards";
 let words = {};
 
@@ -33,6 +35,7 @@ const sizeOfDeck = () => {
     return Object.keys(words).length;
 }
 
+
 const validateWord = aword => {
     words[aword] = {
         score: words[aword].score - 1,
@@ -53,6 +56,16 @@ const clearAllCards = () => {
     }
     Object.keys(words).forEach(key => delete words[key]);
 }
+
+const purgeCards = (text) => {
+    /*
+    Object.keys(words).forEach(word => {
+        if (text.indexOf(word ) == -1)
+            delete words[word];
+    })
+    */
+}
+
 
 const getDefinitionFlashcard = aword => {
     console.log(aword);
@@ -153,6 +166,7 @@ const addWordIfNotExist = async (aword) => {
     if (wordFilter.includes(aword)) {
         return;
     }
+    return;
 
     if (!(aword in words)) {
         dictionaryLookup(aword, val => {
@@ -223,4 +237,4 @@ const getWordListDB = async name => {
 
 readCardsFromStorage();
 
-export {addCardIfNotExist,saveCardsToStorage,refreshWord,getWordListDB,storeWordListDB,notValidWord,addToWordFilter,deleteFromFlash,getWordArray,setMaxFlashcards, getScoreForCards,regetCardFromDictionary,clearAllCards, sizeOfDeck,pickWord,addWordIfNotExist,invalidateWord,validateWord,getDefinitionFlashcard,getJyutpingFlashcard}
+export {purgeCards,addCardIfNotExist,saveCardsToStorage,refreshWord,getWordListDB,storeWordListDB,notValidWord,addToWordFilter,deleteFromFlash,getWordArray,setMaxFlashcards, getScoreForCards,regetCardFromDictionary,clearAllCards, sizeOfDeck,pickWord,addWordIfNotExist,invalidateWord,validateWord,getDefinitionFlashcard,getJyutpingFlashcard}
