@@ -8,8 +8,10 @@ import Navigation from "./Navigation";
 import { Row,Col,Button,Container } from "react-bootstrap";
 import { UserContext } from "../App";
 import RCDocumentReader from "../datacomponents/RCDocumentReader";
-import { amazonTranslateFromChinese, dictionaryLookup,directAIAnalyze,directAIAnalyzeGrammar,directAISummarize,directAISimplify,localLookup, addQuestions, getCwsById, lookUpPosition } from "./backendapi/backendcall";
-import {saveCardsToStorage,clearAllCards, addWordIfNotExist} from "./backendapi/flashcardengine" 
+import { explainParagraph,getTestQuestion, amazonTranslateFromChinese, dictionaryLookup,directAIAnalyze,directAIAnalyzeGrammar,directAISummarize,directAISimplify,localLookup, addQuestions, getCwsById, lookUpPosition } from "./backendapi/backendcall";
+import {saveCardsToStorage,clearAllCards, addWordIfNotExist, sizeOfDeck} from "./backendapi/flashcardengine" 
+import { clearTotalWorkTime,getTotalWorkTime,addToWorkTime } from "./backendapi/workcounter";
+
 
 import Overlay from "react-overlay-component";
 
@@ -17,7 +19,6 @@ import Overlay from "react-overlay-component";
 import { lightColors, darkColors,Container as FloatContainer, Button as FloatButton, Link as FloatLink} from 'react-floating-action-button'
 
 import Modal from 'react-bootstrap/Modal';
-
 
 const StackedDocumentReader = ()=> {
 
@@ -38,6 +39,9 @@ const StackedDocumentReader = ()=> {
     const [modalcontent,setmodalcontent] = useState();
     const [modalheading,setmodalheading] = useState();
 
+    const [readingTime,setReadingTime] = useState(0);
+
+
     const value = React.useContext(UserContext);
     let docreader = value.documentStack.visibleDocument(value.documentStack.depth());
     console.log(docreader);   
@@ -51,21 +55,28 @@ const StackedDocumentReader = ()=> {
     }
 
     const openOverlay = () => {
+        addToWorkTime();
+
         let g = storedPosition;
         g[cwsid] = window.pageYOffset;
         setStoredPosition(g);
         setOverlay(true);
     }
 
-
     const setPage = idx => {
+        addToWorkTime();
+
         docreader.setPage(idx);
         setActivePage(idx);
     }
 
+    const addToWork = () => {
+        addToWorkTime();
+        setReadingTime( getTotalWorkTime() );
+    }
+
     const simpleLookup = (event) => {
 
-        console.log(' ' + event.target.id + ' ' +lastElementId)
         if (event.target.id == lastElementId) {
             lookup(event);
             return;
@@ -79,46 +90,54 @@ const StackedDocumentReader = ()=> {
         setmodalheading(word);
 
         dictionaryLookup(word,result => {
-            setmodalcontent(result[0] +  " " + result[1] + " " + result[2]);    
+            setmodalcontent(result[0] +  " " + result[1] + " " + result[2]);
+            addWordIfNotExist(word);
+            saveCardsToStorage();
+            if (sizeOfDeck() > 10 ) {
+                window.location.href = 'flash';
+            }
         });
-        handleShow();        
+        handleShow();
         setlastLastElementId(lastElementId);
         setlastElementId(event.target.id);
+        addToWork();
     }
 
     const lookup = (event) => {
+
         let g = storedPosition;
         g[cwsid] = window.pageYOffset;
         setStoredPosition(g);
         var p = 0;
-        var cwsidx = event.target.id;        
+        var cwsidx = event.target.id;
         for (var i=0; i < cwsidx;i++) {
             p = p + cwstext[i].length;
         }
         lookUpPosition(cwsid,p,
             data => {
                     value.documentStack.addArrayOfCwsAsDocument(data);
-                    console.log(data);
                     setActivePage(0);
                     setStackDepth(value.documentStack.depth());
                 });
+        addToWork();
     }
 
     const pop = () => {
+        addToWorkTime();
+
         value.documentStack.pop();
         if (stackDepth != value.documentStack.depth()) {
             setStackDepth(value.documentStack.depth());
         }
-        console.log("will call restore");
     }
 
     const restorePosition = () => {
-        console.log('restore position');
         let pos = 0;
         if (cwsid in storedPosition) {
             pos = storedPosition[cwsid];
         }
         document.documentElement.scrollTop = pos;
+        document.documentElement.style.setProperty('--reading-font-size', '20px');
     }
 
     let text ='';
@@ -139,6 +158,7 @@ const StackedDocumentReader = ()=> {
         cwsid = docreader.getPage().getCwsId();
         cwstext =docreader.getPage().cwstext;
         setTimeout(restorePosition,1000);
+        addToWorkTime();
     }
 
     const mapHTMLToCharacter= (c,index) => {
@@ -154,14 +174,14 @@ const StackedDocumentReader = ()=> {
     const incFont = () => {
         const fontSize = getComputedStyle(document.documentElement).getPropertyValue('--reading-font-size');
         console.log(fontSize);
-        if (fontSize === '14px')  
+        if (fontSize === '14px')
             document.documentElement.style.setProperty('--reading-font-size', '20px');
             else
-            if (fontSize === '20px') 
+            if (fontSize === '20px')
                 document.documentElement.style.setProperty('--reading-font-size', '24px');
             else
                 document.documentElement.style.setProperty('--reading-font-size', '20px');
-        }
+    }
 
     const decFont = () => {
         const fontSize = getComputedStyle(document.documentElement).getPropertyValue('--reading-font-size');
@@ -172,6 +192,17 @@ const StackedDocumentReader = ()=> {
         addQuestions(cwsid,data=>{console.log(data)})
     }
 
+
+    const testQuestion = () => {
+        addToWorkTime();
+
+        getTestQuestion(
+            data => {
+                    value.documentStack.addSingleCwsAsDocument(data);
+                    setActivePage(0);
+                    setStackDepth(value.documentStack.depth());
+                });
+    }
 
     const editVocab = () => {
         
@@ -211,7 +242,6 @@ const StackedDocumentReader = ()=> {
             return;
         if (selection == undefined)
             return;
-        let fragment = selection.toString();
         directAIAnalyzeGrammar(cwsid,parseInt(lastElementId),parseInt(lastLastElementId),
             cws => {
                 value.documentStack.addArrayOfCwsAsDocument([cws]);
@@ -267,6 +297,19 @@ const StackedDocumentReader = ()=> {
         }
 
 
+        const explainPara = async () => {
+            let end = parseInt(lastElementId);
+            let start = parseInt(lastLastElementId);
+            let txt = '';
+            while (start < end) {
+                txt = txt + cwstext[start];
+                start++;
+            }
+            explainParagraph(cwsid,txt);
+        }
+
+
+
         const configs = {
             animate: false,
             // top: `5em`,
@@ -280,6 +323,8 @@ const StackedDocumentReader = ()=> {
 
 
 <Overlay configs={configs} isOpen={isOpen} closeOverlay={closeOverlay}>
+{readingTime}<button onClick={clearTotalWorkTime}>res</button>
+<br></br>
 <button onClick={incFont}>+</button><button onClick={decFont}>-</button>
             <button onClick={addQuestionsFromDocument}>q</button>
             <button onClick={restorePosition}>r</button>
@@ -288,7 +333,11 @@ const StackedDocumentReader = ()=> {
             <button onClick={ui_directAIAnalyzeGrammar}>DA2</button>
             <button onClick={ui_directAIASummarize}>DA3</button>
             <button onClick={ui_directAISimplify}>DA4</button>
-            <button onClick={translate}>Tran</button>   
+            <button onClick={translate}>Tran</button> <br></br>
+            <button onClick={clearAllCards}>clr F</button> 
+            <button onClick={testQuestion}>Test</button> 
+            <button onClick={explainPara}>Explain</button> 
+            
             </Overlay>
 
             <Container>
@@ -301,7 +350,7 @@ const StackedDocumentReader = ()=> {
                 rotate={true}
                 onClick={() => openOverlay()} />
         </FloatContainer>
-        <div>            
+        <div>                        
             <br></br>           
             </div> 
             <Row>

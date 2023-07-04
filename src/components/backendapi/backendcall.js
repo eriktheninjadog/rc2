@@ -45,14 +45,14 @@ const dictionaryLookup = (aword,callback)=> {
     });    
 }
 
-const updateDictionary = (chinese,jytuping,definition) =>{
+const updateDictionary = (chinese,jytuping,definition,callback) =>{
     backEndCall("update_dictionary",
     {
         term:chinese,
         jytuping:jytuping,
         definition:definition
     },
-    (something)=> {},
+    callback,
     (error) => {
         console.log(error);
     });
@@ -100,6 +100,26 @@ const getCwsById = async (cwsid,callback) => {
         console.log(error);
     });
 }
+
+
+const deleteById = async (cwsid,callback) => {
+    backEndCall("deletecws",
+    { cwsid:cwsid},
+    callback,
+    (error) => {
+        console.log(error);
+    });
+}
+
+const getTestQuestion = async (callback) => {
+    backEndCall("get_a_problem_text",
+    {},
+    callback,
+    (error) => {
+        console.log(error);
+    });
+}
+
 
 const lookUpPosition = async (cwsid,position,succecallback) => {
     backEndCall("lookupposition",
@@ -200,5 +220,20 @@ const directAISimplify = async (cwsid,p1,p2,successcallback)  => {
     );
 } 
 
+const explainParagraph = async (cwsid,para) => {
 
-export  {amazonTranslateFromChinese,updateDictionary,directAIAnalyze,directAIAnalyzeGrammar,directAISummarize,directAISimplify,localLookup,getCwsVocabulary,dictionaryLookup,getImportedTexts,getCwsById,addQuestions,backEndCall,addTextToBackground,lookUpPosition};
+    backEndCall("explain_paragraph",
+    {
+        cwsid:cwsid,
+        text:para
+    },
+    ()=>{
+        console.log("explainParagraph success")
+    },(error) => {
+        console.log(error);
+    }
+    );
+
+}
+
+export  {deleteById,explainParagraph,getTestQuestion,amazonTranslateFromChinese,updateDictionary,directAIAnalyze,directAIAnalyzeGrammar,directAISummarize,directAISimplify,localLookup,getCwsVocabulary,dictionaryLookup,getImportedTexts,getCwsById,addQuestions,backEndCall,addTextToBackground,lookUpPosition};

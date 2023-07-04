@@ -1,6 +1,3 @@
-//import WordCollection from "../components/wordcollections"
-//import { addTaskDone } from "./dailytask";
-//import { dictionaryLookup } from "./dictionaryapi";
 
 import { dictionaryLookup } from "./backendcall";
 
@@ -29,6 +26,8 @@ const invalidateWord = aword => {
         jyutping: words[aword].jyutping,
         definition: words[aword].definition
     }
+    saveCardsToStorage();
+
 }
 
 const sizeOfDeck = () => {
@@ -44,10 +43,10 @@ const validateWord = aword => {
     }
     console.log(' score ' + words[aword].score);
     if (words[aword].score < 0) {
-        //addTaskDone('flashworddone',1,aword);
         console.log(' delete ' +aword);
         delete words[aword];
     }
+    saveCardsToStorage();
 }
 
 const clearAllCards = () => {
@@ -55,6 +54,7 @@ const clearAllCards = () => {
         wordFilter = JSON.parse(  localStorage.getItem('wordfilter'));
     }
     Object.keys(words).forEach(key => delete words[key]);
+    saveCardsToStorage();
 }
 
 const purgeCards = (text) => {
@@ -107,7 +107,6 @@ const getWordArray = () => {
 const readCardsFromStorage = () => {
     let savestring = localStorage.getItem(localStorageKey);
     if (savestring !=null ) {
-        clearAllCards();
         console.log("reading flashcards");
         let newWords = JSON.parse(savestring);
         console.log(newWords);
@@ -138,7 +137,8 @@ const refreshWord = async aword=> {
             score: 0,
             jyutping: j,
             definition: d
-          }        
+          }
+        saveCardsToStorage();        
     }, () => {
         console.log ('adding not found word ' + aword)
         if (Object.keys(words).length >= window.maxFlashCards) 
@@ -148,6 +148,7 @@ const refreshWord = async aword=> {
             jyutping: "unknown",
             definition: "unknown"
           }
+        saveCardsToStorage();        
     });
 }
 
@@ -166,7 +167,6 @@ const addWordIfNotExist = async (aword) => {
     if (wordFilter.includes(aword)) {
         return;
     }
-    return;
 
     if (!(aword in words)) {
         dictionaryLookup(aword, val => {

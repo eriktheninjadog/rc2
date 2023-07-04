@@ -59,7 +59,6 @@ class RCDocumentStack {
         return p;
     }
 
-
     getCompleteText() {
         let p = '';
         this.stack.forEach(doc => {
@@ -70,7 +69,6 @@ class RCDocumentStack {
         });
         return p;
     }
-
 
     addSingleCwsAsDocument(val) {
         let doc = new RCDocument();

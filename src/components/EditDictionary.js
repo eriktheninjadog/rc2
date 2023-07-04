@@ -2,7 +2,7 @@ import { Container } from "react-bootstrap";
 import { useState,useRef } from "react";
 import Navigation from "./Navigation";
 
-import { useSearchParams } from "react-router-dom";
+import { useNavigate,useSearchParams } from "react-router-dom";
 import { amazonTranslateFromChinese, dictionaryLookup, updateDictionary } from "./backendapi/backendcall";
 
 
@@ -17,6 +17,8 @@ const EditDictionary = () => {
     const chineseField = useRef();
     const jyutpingField = useRef();
     const definitionField = useRef();
+
+    const navigate = useNavigate();
 
 
 
@@ -34,7 +36,11 @@ const EditDictionary = () => {
     const update = async ()  => {
         updateDictionary(chineseField.current.value,
             jyutpingField.current.value,
-            definitionField.current.value);
+            definitionField.current.value,
+            ()=> {
+                navigate(-1);
+            }
+            );
     }
 
     const plecoAction = () => {

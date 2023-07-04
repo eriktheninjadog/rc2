@@ -6,7 +6,7 @@ import { Container } from "react-bootstrap";
 import { useEffect } from "react";
 import Navigation from "./Navigation";
 import { get } from "local-storage";
-import { getCwsVocabulary,getCwsById,getImportedTexts } from "./backendapi/backendcall";
+import {deleteById, getCwsVocabulary,getCwsById,getImportedTexts } from "./backendapi/backendcall";
 
 import { UserContext } from "../App";
 
@@ -25,6 +25,17 @@ const TextList = ()=> {
         getCwsVocabulary(id);
     }
 
+
+    const ui_deleteText = id =>
+    {
+        //value.documentStack.clear();
+        deleteById(id);
+        getImportedTexts(
+            itexts =>
+            { setTexts(itexts);}
+        );
+    }
+
     if (texts.length == 0) {
         getImportedTexts(
             itexts =>
@@ -40,7 +51,7 @@ const TextList = ()=> {
             <tr></tr>
             {texts.map( (item,index) => 
             {
-                return (<tr><td>{item[0]}</td><td><a href="#" onClick={()=>gettext(item[0]) }>{item[6]}</a></td></tr>);
+                return (<tr><td>{item[0]}</td><td><a href="#" onClick={()=>ui_deleteText(item[0]) }>delete</a></td><td><a href="#" onClick={()=>gettext(item[0]) }>{item[6]}</a></td></tr>);
             }            
             )}
         </table>

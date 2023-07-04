@@ -63,10 +63,6 @@ const FlashCard = ()=> {
         setContent(rr);        
     }
 
-    const purgeNotInDocs = () => {
-        purgeCards( value.documentStack.getCompleteText());
-    }
-
     const simpleLookup = (event) => {
         console.log(event.target.innerText);
         let res = localLookup(event.target.innerText );
@@ -89,7 +85,6 @@ const FlashCard = ()=> {
 
     const successButton = () => {
         validateWord(header);
-        purgeNotInDocs();
         pickNewWord();
     }
 
