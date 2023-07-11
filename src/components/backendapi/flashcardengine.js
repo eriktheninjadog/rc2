@@ -4,7 +4,10 @@ import { dictionaryLookup } from "./backendcall";
 import RCDocumentStack from "../../datacomponents/RCDocumentStack"
 
 const localStorageKey ="flashcards";
+const failedStorageKey ="failed_flashcards";
+
 let words = {};
+
 
 let wordFilter = [];
 
@@ -13,21 +16,32 @@ const randomVocab = arr => Math.floor(Math.random() * arr.length);
 
 window.maxFlashCards = 10000;
 
+// why do I save cards???
 const pickWord = ()=> {
-    saveCardsToStorage();
+    readCardsFromStorage();
     return Object.keys(words)[randomVocab(Object.keys(words))]
 }
 
 const invalidateWord = aword => {
     //addTaskDone('flashwordfailed',1,aword);
     console.log('flashwordfailed');
+    var failures = null;
+    try{
+        failures = JSON.parse( localStorage.getItem(failedStorageKey) );
+    }
+    catch(d) {
+        failures = [];
+    }
+    if (failures == null) 
+        failures = [];
+    failures.push(aword);
+    localStorage.setItem(failedStorageKey, JSON.stringify(failures));
     words[aword] = {
         score: words[aword].score + 2,
         jyutping: words[aword].jyutping,
         definition: words[aword].definition
     }
     saveCardsToStorage();
-
 }
 
 const sizeOfDeck = () => {
@@ -64,6 +78,27 @@ const purgeCards = (text) => {
             delete words[word];
     })
     */
+}
+
+const getFailedCards = () => {
+    clearAllCards();
+    var failures = null;
+    try{
+        failures = JSON.parse( localStorage.getItem(failedStorageKey) );
+    }
+    catch(d) {
+        failures = [];
+    }
+    if (failures == null) 
+        failures = [];
+
+    if (failures.length == 0)
+        return;
+
+    for(var i =0;i< 50;i++) {
+        let w = randomVocab(failures);    
+        addCardIfNotExist(w);
+    }
 }
 
 
@@ -237,4 +272,4 @@ const getWordListDB = async name => {
 
 readCardsFromStorage();
 
-export {purgeCards,addCardIfNotExist,saveCardsToStorage,refreshWord,getWordListDB,storeWordListDB,notValidWord,addToWordFilter,deleteFromFlash,getWordArray,setMaxFlashcards, getScoreForCards,regetCardFromDictionary,clearAllCards, sizeOfDeck,pickWord,addWordIfNotExist,invalidateWord,validateWord,getDefinitionFlashcard,getJyutpingFlashcard}
+export {getFailedCards,purgeCards,addCardIfNotExist,saveCardsToStorage,refreshWord,getWordListDB,storeWordListDB,notValidWord,addToWordFilter,deleteFromFlash,getWordArray,setMaxFlashcards, getScoreForCards,regetCardFromDictionary,clearAllCards, sizeOfDeck,pickWord,addWordIfNotExist,invalidateWord,validateWord,getDefinitionFlashcard,getJyutpingFlashcard}

@@ -43,6 +43,16 @@ const EditDictionary = () => {
             );
     }
 
+    const getJyutping = () => {
+        let chi = chineseField.current.value;
+        for (var i=0;i<chi.length;i++) {
+            let cha = chi[i];
+            dictionaryLookup(''+cha, term=> {
+                jyutpingField.current.value = jyutpingField.current.value + ' ' + term[1];
+            });
+        }
+    }
+
     const plecoAction = () => {
         let url = 'plecoapi://x-callback-url/s?q='+ encodeURI(chineseField.current.value);
         window.open(url)
@@ -50,7 +60,7 @@ const EditDictionary = () => {
 
     const translateAction = () => {
         amazonTranslateFromChinese(chineseField.current.value,
-            (result) => {
+            (result) => { 
                 definitionField.current.value = result;
             }
             )
@@ -67,6 +77,8 @@ const EditDictionary = () => {
             <button onClick={update}>Post</button><br></br>
             <button onClick={plecoAction}>Pleco</button>
             <button onClick={translateAction}>Translate</button>
+            <button onClick={getJyutping}>Jyutping</button>
+
             </Container>
         </div>
     );

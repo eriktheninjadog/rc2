@@ -10,9 +10,11 @@ import { UserContext } from "../App";
 import React from "react";
 
 import { directAIAnalyze,directAIAnalyzeGrammar,directAISummarize,directAISimplify,localLookup, addQuestions, getCwsById, lookUpPosition } from "./backendapi/backendcall";
-import { purgeCards, sizeOfDeck, invalidateWord,validateWord,pickWord,getJyutpingFlashcard,getDefinitionFlashcard } from "./backendapi/flashcardengine";
+import { purgeCards, sizeOfDeck, invalidateWord,validateWord,pickWord,getJyutpingFlashcard,getDefinitionFlashcard, clearAllCards } from "./backendapi/flashcardengine";
 import context from "react-bootstrap/esm/AccordionContext";
 import RCDocumentStack from "../datacomponents/RCDocumentStack";
+import { clearTotalWorkTime,getTotalWorkTime,addToWorkTime } from "./backendapi/workcounter";
+
 
 
 const FlashCard = ()=> {
@@ -24,15 +26,27 @@ const FlashCard = ()=> {
     const [content,setContent] = useState('');
 
     const value = React.useContext(UserContext);
+
+    const [readingTime,setReadingTime] = useState(0);
+
+
+    const addToWork = () => {
+        addToWorkTime();
+        setReadingTime( getTotalWorkTime() );
+    }
+
     
     const pickNewWord = () => {
         setPronounce('');
         setDefinition('');
         setHeader(pickWord());
         setDeckSize( sizeOfDeck() );
+        addToWorkTime();
+
     }
 
     const showBackside = () => {
+        addToWorkTime();
         setPronounce(getJyutpingFlashcard(header));
         setDefinition(getDefinitionFlashcard(header));
         // so this is where it gets tricky!
@@ -77,20 +91,29 @@ const FlashCard = ()=> {
 
     const flipButton = () => {
         showBackside();
+        addToWork();
     }
 
     const nextButton = () => {
         pickNewWord();
+        addToWork();
     }
 
     const successButton = () => {
         validateWord(header);
+        if (sizeOfDeck() == 0) {
+            clearAllCards();
+            window.location.href = 'reader';
+            return;
+        }
         pickNewWord();
+        addToWork();
     }
 
     const failureButton = () => {
         invalidateWord(header);
         pickNewWord();
+        addToWork();
     }
 
     const randomButton = () => {
@@ -106,7 +129,7 @@ const FlashCard = ()=> {
         <div>            
             <Container>
                 <Navigation></Navigation>
-                <h5>{deckSize}</h5>
+                <h5>{deckSize}/{readingTime}</h5>
                 <h1>{header}</h1><a href={"/editdictionary?term="+header+""} >edit</a><br></br>
                 <h2>{pronounce}</h2><br></br>
                  <span>{definition}</span><br></br>   

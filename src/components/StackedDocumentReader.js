@@ -1,15 +1,11 @@
 import React, { useState } from "react";
 
-import SidebarMenu from 'react-bootstrap-sidebar-menu';
-
-
 import Pagination from 'react-bootstrap/Pagination';
 import Navigation from "./Navigation";
 import { Row,Col,Button,Container } from "react-bootstrap";
 import { UserContext } from "../App";
-import RCDocumentReader from "../datacomponents/RCDocumentReader";
-import { explainParagraph,getTestQuestion, amazonTranslateFromChinese, dictionaryLookup,directAIAnalyze,directAIAnalyzeGrammar,directAISummarize,directAISimplify,localLookup, addQuestions, getCwsById, lookUpPosition } from "./backendapi/backendcall";
-import {saveCardsToStorage,clearAllCards, addWordIfNotExist, sizeOfDeck} from "./backendapi/flashcardengine" 
+import {directAIQuestionBackend, explainParagraph,getTestQuestion, amazonTranslateFromChinese, dictionaryLookup,directAIAnalyze,directAIAnalyzeGrammar,directAISummarize,directAISimplify,localLookup, addQuestions, getCwsById, lookUpPosition } from "./backendapi/backendcall";
+import {getFailedCards,saveCardsToStorage,clearAllCards, addWordIfNotExist, sizeOfDeck} from "./backendapi/flashcardengine" 
 import { clearTotalWorkTime,getTotalWorkTime,addToWorkTime } from "./backendapi/workcounter";
 
 
@@ -22,15 +18,15 @@ import Modal from 'react-bootstrap/Modal';
 
 const StackedDocumentReader = ()=> {
 
-
     const [show, setShow] = useState(false);
 
     const handleClose = () => setShow(false);
     const handleShow = () => setShow(true);
   
-
     let items = [];
     let cwsid = -1; 
+    let idcounter = 0;
+
     const [activePage,setActivePage] = useState(0);
     const [storedPosition,setStoredPosition]  = useState({});
     const [lastElementId,setlastElementId] = useState(0);
@@ -41,12 +37,10 @@ const StackedDocumentReader = ()=> {
 
     const [readingTime,setReadingTime] = useState(0);
 
-
     const value = React.useContext(UserContext);
     let docreader = value.documentStack.visibleDocument(value.documentStack.depth());
-    console.log(docreader);   
+    console.log(docreader);
     const [stackDepth,setStackDepth] = useState(0);
-
     const [isOpen, setOverlay] = useState(false);
 
     const closeOverlay = () => {
@@ -56,7 +50,6 @@ const StackedDocumentReader = ()=> {
 
     const openOverlay = () => {
         addToWorkTime();
-
         let g = storedPosition;
         g[cwsid] = window.pageYOffset;
         setStoredPosition(g);
@@ -65,7 +58,6 @@ const StackedDocumentReader = ()=> {
 
     const setPage = idx => {
         addToWorkTime();
-
         docreader.setPage(idx);
         setActivePage(idx);
     }
@@ -76,16 +68,16 @@ const StackedDocumentReader = ()=> {
     }
 
     const simpleLookup = (event) => {
-
         if (event.target.id == lastElementId) {
             lookup(event);
             return;
         }
 
+        event.target.style.backgroundColor = "#DDDDDD"
         let g = storedPosition;
+        localStorage.setItem('bookmark'+cwsid, event.target.id);
         g[cwsid] = window.pageYOffset;
         setStoredPosition(g);
-
         let word =event.target.innerText;
         setmodalheading(word);
 
@@ -98,13 +90,20 @@ const StackedDocumentReader = ()=> {
             }
         });
         handleShow();
+        if (lastLastElementId != 0) {
+            document.getElementById(lastLastElementId).style.backgroundColor = "#FFFFFF";
+        }
+
+        if (lastElementId != 0) {
+            document.getElementById(lastElementId).style.backgroundColor = "#DDDDFF";
+        }
+
         setlastLastElementId(lastElementId);
         setlastElementId(event.target.id);
         addToWork();
     }
 
     const lookup = (event) => {
-
         let g = storedPosition;
         g[cwsid] = window.pageYOffset;
         setStoredPosition(g);
@@ -124,7 +123,6 @@ const StackedDocumentReader = ()=> {
 
     const pop = () => {
         addToWorkTime();
-
         value.documentStack.pop();
         if (stackDepth != value.documentStack.depth()) {
             setStackDepth(value.documentStack.depth());
@@ -138,6 +136,10 @@ const StackedDocumentReader = ()=> {
         }
         document.documentElement.scrollTop = pos;
         document.documentElement.style.setProperty('--reading-font-size', '20px');
+        let markthis = localStorage.getItem('bookmark'+cwsid);
+        if (markthis != undefined) {
+            document.getElementById(markthis).style.background = '#FFDDDD'; 
+        }
     }
 
     let text ='';
@@ -162,13 +164,15 @@ const StackedDocumentReader = ()=> {
     }
 
     const mapHTMLToCharacter= (c,index) => {
+        idcounter++;
         if (c == '\n') {
             return (<br id={index}></br>)
         }
         if (c == ' ') {
             return (<span id={index}>&nbsp;</span>)
         }
-        return (<span id={index} className="App"> {c}</span>);
+        idcounter += c.length - 1;
+        return (<span orgidx={idcounter}  id={index} className="App"> {c}</span>);
     }
 
     const incFont = () => {
@@ -192,20 +196,14 @@ const StackedDocumentReader = ()=> {
         addQuestions(cwsid,data=>{console.log(data)})
     }
 
-
     const testQuestion = () => {
         addToWorkTime();
-
         getTestQuestion(
             data => {
                     value.documentStack.addSingleCwsAsDocument(data);
                     setActivePage(0);
                     setStackDepth(value.documentStack.depth());
                 });
-    }
-
-    const editVocab = () => {
-        
     }
 
     const flashCards = async ()  => {
@@ -227,120 +225,77 @@ const StackedDocumentReader = ()=> {
         }, 200);
     }
 
-    const ui_directAIAnalyze = async ()  => {
-        directAIAnalyze(cwsid,parseInt(lastElementId),parseInt(lastLastElementId),
-            cws => {
-                value.documentStack.addArrayOfCwsAsDocument([cws]);
-                setStackDepth(value.documentStack.depth());
-            }
-            );
+    const directAIExplain = async (question) => {
+        let end = parseInt(lastElementId);
+        let start = parseInt(lastLastElementId);
+        if (end < start) {
+            var tmp = lastElementId;
+            lastElementId = lastLastElementId;
+            lastLastElementId = tmp;
+        }
+        let orgStart = parseInt(document.getElementById(lastLastElementId ).getAttribute('orgidx'));
+        orgStart -= document.getElementById(lastLastElementId ).innerText.length;
+        let orgEnd = document.getElementById(lastElementId).getAttribute('orgidx');
+        directAIQuestionBackend(cwsid,question,orgStart,parseInt(orgEnd), cws => { value.documentStack.addSingleCwsAsDocument(cws)});    
+        closeOverlay();
     }
-
-    const ui_directAIAnalyzeGrammar = async () => {
-        let selection = document.getSelection();
-        if (selection == null)
-            return;
-        if (selection == undefined)
-            return;
-        directAIAnalyzeGrammar(cwsid,parseInt(lastElementId),parseInt(lastLastElementId),
-            cws => {
-                value.documentStack.addArrayOfCwsAsDocument([cws]);
-                setStackDepth(value.documentStack.depth());
-            }
-            );
-    }
-
-    const ui_directAIASummarize = async () => {
-        let selection = document.getSelection();
-        if (selection == null)
-            return;
-        if (selection == undefined)
-            return;
-        let fragment = selection.toString();
-        directAISummarize(cwsid,parseInt(lastElementId),parseInt(lastLastElementId),
-            cws => {
-                value.documentStack.addArrayOfCwsAsDocument([cws]);
-                setStackDepth(value.documentStack.depth());
-            }
-            );
-    }
-
-    const ui_directAISimplify = async () => {
-        let selection = document.getSelection();
-        if (selection == null)
-            return;
-        if (selection == undefined)
-            return;
-        let fragment = selection.toString();
-        directAISimplify(cwsid,parseInt(lastElementId),parseInt(lastLastElementId),
-            cws => {
-                value.documentStack.addArrayOfCwsAsDocument([cws]);
-                setStackDepth(value.documentStack.depth());
-            }
-            );
-    }
-
 
     const translate = async () => {
-            let end = parseInt(lastElementId);
-            let start = parseInt(lastLastElementId);
-            let txt = '';
-            while (start < end) {
-                txt = txt + cwstext[start];
-                start++;
-            }
-            amazonTranslateFromChinese(txt, 
-                translated => {
-                    alert(translated);
-                }
-                );            
+        let end = parseInt(lastElementId);
+        let start = parseInt(lastLastElementId);
+        let txt = '';
+        while (start < end) {
+            txt = txt + cwstext[start];
+            start++;
         }
-
-
-        const explainPara = async () => {
-            let end = parseInt(lastElementId);
-            let start = parseInt(lastLastElementId);
-            let txt = '';
-            while (start < end) {
-                txt = txt + cwstext[start];
-                start++;
+        amazonTranslateFromChinese(txt, 
+            translated => {
+                alert(translated);
             }
-            explainParagraph(cwsid,txt);
+            );            
+    }
+
+    const explainPara = async () => {
+        let end = parseInt(lastElementId);
+        let start = parseInt(lastLastElementId);
+        let txt = '';
+        while (start < end) {
+            txt = txt + cwstext[start];
+            start++;
         }
+        explainParagraph(cwsid,txt);
+    }
 
-
-
-        const configs = {
-            animate: false,
-            // top: `5em`,
-            // clickDismiss: false,
-            // escapeDismiss: false,
-            // focusOutline: false,
-        };
+    const configs = {
+        animate: false,
+        // top: `5em`,
+        // clickDismiss: false,
+        // escapeDismiss: false,
+        // focusOutline: false,
+    };
 
     return (
         <div>
-
-
-<Overlay configs={configs} isOpen={isOpen} closeOverlay={closeOverlay}>
-{readingTime}<button onClick={clearTotalWorkTime}>res</button>
-<br></br>
-<button onClick={incFont}>+</button><button onClick={decFont}>-</button>
+        <Overlay configs={configs} isOpen={isOpen} closeOverlay={closeOverlay}>
+            {readingTime}<button onClick={clearTotalWorkTime}>res</button>
+            <br></br>
+            <button onClick={incFont}>+</button><button onClick={decFont}>-</button>
             <button onClick={addQuestionsFromDocument}>q</button>
             <button onClick={restorePosition}>r</button>
             <button onClick={flashCards}>f</button><br></br>
-            <button onClick={ui_directAIAnalyze}>DA1</button>
-            <button onClick={ui_directAIAnalyzeGrammar}>DA2</button>
-            <button onClick={ui_directAIASummarize}>DA3</button>
-            <button onClick={ui_directAISimplify}>DA4</button>
-            <button onClick={translate}>Tran</button> <br></br>
+            <button onClick={translate}>Tran</button> 
+            <button onClick={getFailedCards}>Hard</button>             
+            <br></br>
             <button onClick={clearAllCards}>clr F</button> 
             <button onClick={testQuestion}>Test</button> 
             <button onClick={explainPara}>Explain</button> 
-            
-            </Overlay>
-
-            <Container>
+            <br></br>
+            <button onClick={()=>{ directAIExplain("Explain the grammar of this text:");}}>Ex Grammar</button>
+            <button onClick={()=>{ directAIExplain("Summarize this text in chinese:");}}>Sum</button>
+            <button onClick={()=>{ directAIExplain("What are the verbs in this text:");}}>Verbs</button>
+            <button onClick={()=>{ directAIExplain("Make a list of questions related to this text:");}}>List</button>
+        </Overlay>
+        <Container>
             <Navigation></Navigation>
             <FloatContainer>
             <FloatButton
@@ -349,8 +304,8 @@ const StackedDocumentReader = ()=> {
                 icon="fas fa-plus"
                 rotate={true}
                 onClick={() => openOverlay()} />
-        </FloatContainer>
-        <div>                        
+            </FloatContainer>
+            <div>                        
             <br></br>           
             </div> 
             <Row>
@@ -368,16 +323,14 @@ const StackedDocumentReader = ()=> {
                 return mapHTMLToCharacter(c,index)
             })}
             </div>
-                </Container>
-                <Modal show={show} onHide={handleClose}>
+            </Container>
+            <Modal show={show} onHide={handleClose}>
             <Modal.Header closeButton>
           <Modal.Title>{modalheading}</Modal.Title>
         </Modal.Header>
         <Modal.Body dangerouslySetInnerHTML={{__html: modalcontent}}></Modal.Body>
         <Modal.Footer>
-          <Button variant="secondary" onClick={handleClose}>
-            Close 
-          </Button>
+          <Button variant="secondary" onClick={handleClose}>Close </Button>
           <a href={"/editdictionary?term="+modalheading}>edit</a>
         </Modal.Footer>
       </Modal>

@@ -12,6 +12,7 @@ const backEndCall = async (endpoint,parameters,successcallback, errorcallback) =
     console.log(parameters);
     axios.post('https://chinese.eriktamm.com/api/'+endpoint, parameters)
     .then(function (response) {
+        console.log(response.data.result);
         successcallback(response.data.result)
     })
     .catch(function (error) {
@@ -32,8 +33,6 @@ const amazonTranslateFromChinese = (chinesetext,callback) => {
     });
 }
 
-
-
 const dictionaryLookup = (aword,callback)=> {
     backEndCall("dictionarylookup",
     {
@@ -45,11 +44,11 @@ const dictionaryLookup = (aword,callback)=> {
     });    
 }
 
-const updateDictionary = (chinese,jytuping,definition,callback) =>{
+const updateDictionary = (chinese,jyutping,definition,callback) =>{
     backEndCall("update_dictionary",
     {
         term:chinese,
-        jytuping:jytuping,
+        jyutping:jyutping,
         definition:definition
     },
     callback,
@@ -220,6 +219,22 @@ const directAISimplify = async (cwsid,p1,p2,successcallback)  => {
     );
 } 
 
+
+const directAIQuestionBackend = async (cwsid,question,start,end,successcallback)  => {
+    backEndCall("direct_ai_question",
+    {
+        cwsid:cwsid,
+        start:start,
+        end:end,
+        question:question
+    },
+    successcallback,(error) => {
+        console.log(error);
+    }
+    );
+} 
+
+
 const explainParagraph = async (cwsid,para) => {
 
     backEndCall("explain_paragraph",
@@ -233,7 +248,6 @@ const explainParagraph = async (cwsid,para) => {
         console.log(error);
     }
     );
-
 }
 
-export  {deleteById,explainParagraph,getTestQuestion,amazonTranslateFromChinese,updateDictionary,directAIAnalyze,directAIAnalyzeGrammar,directAISummarize,directAISimplify,localLookup,getCwsVocabulary,dictionaryLookup,getImportedTexts,getCwsById,addQuestions,backEndCall,addTextToBackground,lookUpPosition};
+export  {directAIQuestionBackend,deleteById,explainParagraph,getTestQuestion,amazonTranslateFromChinese,updateDictionary,directAIAnalyze,directAIAnalyzeGrammar,directAISummarize,directAISimplify,localLookup,getCwsVocabulary,dictionaryLookup,getImportedTexts,getCwsById,addQuestions,backEndCall,addTextToBackground,lookUpPosition};
