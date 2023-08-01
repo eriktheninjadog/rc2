@@ -72,12 +72,10 @@ const clearAllCards = () => {
 }
 
 const purgeCards = (text) => {
-    /*
     Object.keys(words).forEach(word => {
         if (text.indexOf(word ) == -1)
             delete words[word];
     })
-    */
 }
 
 const getFailedCards = () => {
@@ -96,11 +94,12 @@ const getFailedCards = () => {
         return;
 
     for(var i =0;i< 50;i++) {
-        let w = randomVocab(failures);    
-        addCardIfNotExist(w);
+        let w = failures[randomVocab(failures)];   
+        console.log(w); 
+        addWordIfNotExist(w)
+        saveCardsToStorage();
     }
 }
-
 
 const getDefinitionFlashcard = aword => {
     console.log(aword);
@@ -210,7 +209,8 @@ const addWordIfNotExist = async (aword) => {
                 score: 0,
                 jyutping: val[1],
                 definition: val[2]
-              }        
+              }
+              saveCardsToStorage();
         }, () => {
             console.log ('adding not found word ' + aword)
             words[aword] = {
@@ -218,6 +218,7 @@ const addWordIfNotExist = async (aword) => {
                 jyutping: "unknown",
                 definition: "unknown"
               }
+            saveCardsToStorage();
         });
     }
 }

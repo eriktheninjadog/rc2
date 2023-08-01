@@ -1,7 +1,7 @@
 import { Row,Col,Button,Container } from "react-bootstrap";
 
 
-import { useState } from "react";
+import { useState,useRef } from "react";
 import Navigation from "./Navigation";
 
 import { UserContext } from "../App";
@@ -24,25 +24,30 @@ const FlashCard = ()=> {
     const [definition,setDefinition] = useState('');
     const [deckSize,setDeckSize] = useState(0);
     const [content,setContent] = useState('');
-
     const value = React.useContext(UserContext);
-
     const [readingTime,setReadingTime] = useState(0);
-
+    const writeField = useRef();
 
     const addToWork = () => {
         addToWorkTime();
         setReadingTime( getTotalWorkTime() );
     }
 
-    
     const pickNewWord = () => {
+        let picked = '';
         setPronounce('');
         setDefinition('');
-        setHeader(pickWord());
+        picked = pickWord();
+        setHeader(picked);
         setDeckSize( sizeOfDeck() );
         addToWorkTime();
-
+        setTimeout(()=>{
+            if (Math.random() > 0.8 ) {
+                writeField.current.value = '';
+            } else {
+                writeField.current.value = picked;
+            }
+        },1000 );
     }
 
     const showBackside = () => {
@@ -88,7 +93,6 @@ const FlashCard = ()=> {
         alert(r);
     }
 
-
     const flipButton = () => {
         showBackside();
         addToWork();
@@ -100,6 +104,9 @@ const FlashCard = ()=> {
     }
 
     const successButton = () => {
+        if ( writeField.current.value != header ) {
+            return;
+        }
         validateWord(header);
         if (sizeOfDeck() == 0) {
             clearAllCards();
@@ -120,7 +127,6 @@ const FlashCard = ()=> {
         validateWord(header);
     }
 
-
     if (header === '') {
         pickNewWord();        
     }
@@ -131,8 +137,9 @@ const FlashCard = ()=> {
                 <Navigation></Navigation>
                 <h5>{deckSize}/{readingTime}</h5>
                 <h1>{header}</h1><a href={"/editdictionary?term="+header+""} >edit</a><br></br>
+                <input type="text" ref={writeField}></input><br></br>
                 <h2>{pronounce}</h2><br></br>
-                 <span>{definition}</span><br></br>   
+                 <span>{definition}</span><br></br>
                  <span dangerouslySetInnerHTML={{__html: content}} onClick={simpleLookup}></span><br></br>                    
                  <Row>
                 <Col md={2}><Button className="btn-block mr-1 mt-1 btn-lg"
@@ -154,6 +161,5 @@ const FlashCard = ()=> {
         </div>
     )
 }
-
 
 export default FlashCard;

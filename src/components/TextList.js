@@ -21,8 +21,8 @@ const TextList = ()=> {
         value.documentStack.clear();
         getCwsById(id, returnedCws=>{
             value.documentStack.addSingleCwsAsDocument(returnedCws);
+            window.location.href = 'reader';
         });
-        getCwsVocabulary(id);
     }
 
 

@@ -1,10 +1,10 @@
-import React, { useState } from "react";
+import React, { useState,useEffect } from "react";
 
 import Pagination from 'react-bootstrap/Pagination';
 import Navigation from "./Navigation";
 import { Row,Col,Button,Container } from "react-bootstrap";
 import { UserContext } from "../App";
-import {directAIQuestionBackend, explainParagraph,getTestQuestion, amazonTranslateFromChinese, dictionaryLookup,directAIAnalyze,directAIAnalyzeGrammar,directAISummarize,directAISimplify,localLookup, addQuestions, getCwsById, lookUpPosition } from "./backendapi/backendcall";
+import {extensibleSimplify,retrieveValueFromServer,storeValueOnServer,directAIQuestionBackend, explainParagraph,getTestQuestion, amazonTranslateFromChinese, dictionaryLookup,directAIAnalyze,directAIAnalyzeGrammar,directAISummarize,directAISimplify,localLookup, addQuestions, getCwsById, lookUpPosition } from "./backendapi/backendcall";
 import {getFailedCards,saveCardsToStorage,clearAllCards, addWordIfNotExist, sizeOfDeck} from "./backendapi/flashcardengine" 
 import { clearTotalWorkTime,getTotalWorkTime,addToWorkTime } from "./backendapi/workcounter";
 
@@ -31,6 +31,7 @@ const StackedDocumentReader = ()=> {
     const [storedPosition,setStoredPosition]  = useState({});
     const [lastElementId,setlastElementId] = useState(0);
     const [lastLastElementId,setlastLastElementId] = useState(0);
+    
 
     const [modalcontent,setmodalcontent] = useState();
     const [modalheading,setmodalheading] = useState();
@@ -68,19 +69,35 @@ const StackedDocumentReader = ()=> {
     }
 
     const simpleLookup = (event) => {
+
         if (event.target.id == lastElementId) {
             lookup(event);
             return;
         }
 
+        if (lastLastElementId != 0) {
+            if (document.getElementById(lastLastElementId) != null) 
+                document.getElementById(lastLastElementId).style.backgroundColor = "#FFFFFF";
+        }
+
+        if (parseInt(event.target.id) > window.furthestRead  ) {
+            console.log('storing value on server;' + parseInt(event.target.id))
+            storeValueOnServer('bookmarks','furthest_read'+cwsid,parseInt(event.target.id));            
+        }
+
+        if (lastElementId != 0) {
+            if (document.getElementById(lastElementId) != null) 
+                document.getElementById(lastElementId).style.backgroundColor = "#DDDDFF";
+        }
+
         event.target.style.backgroundColor = "#DDDDDD"
         let g = storedPosition;
         localStorage.setItem('bookmark'+cwsid, event.target.id);
+
         g[cwsid] = window.pageYOffset;
         setStoredPosition(g);
         let word =event.target.innerText;
         setmodalheading(word);
-
         dictionaryLookup(word,result => {
             setmodalcontent(result[0] +  " " + result[1] + " " + result[2]);
             addWordIfNotExist(word);
@@ -90,14 +107,6 @@ const StackedDocumentReader = ()=> {
             }
         });
         handleShow();
-        if (lastLastElementId != 0) {
-            document.getElementById(lastLastElementId).style.backgroundColor = "#FFFFFF";
-        }
-
-        if (lastElementId != 0) {
-            document.getElementById(lastElementId).style.backgroundColor = "#DDDDFF";
-        }
-
         setlastLastElementId(lastElementId);
         setlastElementId(event.target.id);
         addToWork();
@@ -130,16 +139,17 @@ const StackedDocumentReader = ()=> {
     }
 
     const restorePosition = () => {
-        let pos = 0;
-        if (cwsid in storedPosition) {
-            pos = storedPosition[cwsid];
-        }
-        document.documentElement.scrollTop = pos;
-        document.documentElement.style.setProperty('--reading-font-size', '20px');
-        let markthis = localStorage.getItem('bookmark'+cwsid);
-        if (markthis != undefined) {
-            document.getElementById(markthis).style.background = '#FFDDDD'; 
-        }
+        retrieveValueFromServer('bookmarks','furthest_read'+cwsid, furthestRead => {
+            document.documentElement.style.setProperty('--reading-font-size', '20px');
+
+            if (furthestRead == null) {
+                window.furthestRead = 0;
+            } else {
+                window.furthestRead = furthestRead;
+                document.getElementById(''+furthestRead).style.background = '#9999FF';  
+                document.getElementById(''+furthestRead).scrollIntoView();
+            }
+        });        
     }
 
     let text ='';
@@ -160,6 +170,14 @@ const StackedDocumentReader = ()=> {
         cwsid = docreader.getPage().getCwsId();
         cwstext =docreader.getPage().cwstext;
         setTimeout(restorePosition,1000);
+        retrieveValueFromServer('bookmarks','furthest_read'+cwsid, furthestRead => {
+            if (furthestRead == null) {
+                window.furthestRead = 0;
+            } else {
+                window.furthestRead = furthestRead;
+                document.getElementById(''+furthestRead).style.background = '#9999FF'
+            }
+        });
         addToWorkTime();
     }
 
@@ -192,10 +210,6 @@ const StackedDocumentReader = ()=> {
         document.documentElement.style.setProperty('--reading-font-size', '14px');
     }
 
-    const addQuestionsFromDocument = () => {
-        addQuestions(cwsid,data=>{console.log(data)})
-    }
-
     const testQuestion = () => {
         addToWorkTime();
         getTestQuestion(
@@ -204,25 +218,6 @@ const StackedDocumentReader = ()=> {
                     setActivePage(0);
                     setStackDepth(value.documentStack.depth());
                 });
-    }
-
-    const flashCards = async ()  => {
-        let q = [];
-        getCwsById(cwsid,
-            cwsobject => {
-                cwsobject[3].forEach(word => {
-                    q.push(word);
-                })
-            }
-        );
-        clearAllCards();
-        setInterval(function () {
-            if ( q.length > 0) {
-                let w = q.pop();
-                addWordIfNotExist(w);
-                saveCardsToStorage();
-            }
-        }, 200);
     }
 
     const directAIExplain = async (question) => {
@@ -235,8 +230,29 @@ const StackedDocumentReader = ()=> {
         }
         let orgStart = parseInt(document.getElementById(lastLastElementId ).getAttribute('orgidx'));
         orgStart -= document.getElementById(lastLastElementId ).innerText.length;
-        let orgEnd = document.getElementById(lastElementId).getAttribute('orgidx');
-        directAIQuestionBackend(cwsid,question,orgStart,parseInt(orgEnd), cws => { value.documentStack.addSingleCwsAsDocument(cws)});    
+        let orgEnd = document.getElementById(lastElementId).getAttribute('orgidx');   
+        directAIQuestionBackend(cwsid,question,orgStart,parseInt(orgEnd), cws => { 
+            if (cws[2].indexOf('ouns') != -1 && cws[2].indexOf('erbs') != -1 ) {
+                var p = -1;
+                for (var i =0; i< cws[3].length;i++) {
+                    if (cws[3][i].indexOf('ouns') != -1) {
+                        p = i;
+                    }
+                }
+                clearAllCards();
+                alert(' ' + p + ' ');
+                for (var i = p; i < cws[3].length;i++) {
+                    addWordIfNotExist(cws[3][i]);
+                    saveCardsToStorage();
+                    console.log(cws[3][i]);
+                }
+                //window.location.href = 'flash';
+                return;
+            }
+            value.documentStack.addSingleCwsAsDocument(cws);
+            setActivePage(0);
+            setStackDepth(value.documentStack.depth());
+        });    
         closeOverlay();
     }
 
@@ -266,12 +282,14 @@ const StackedDocumentReader = ()=> {
         explainParagraph(cwsid,txt);
     }
 
+
+    const esimple = async () => {
+        alert('Esimple are you sure?');
+        extensibleSimplify(cwsid, result => {console.log(result)});
+    }
+
     const configs = {
-        animate: false,
-        // top: `5em`,
-        // clickDismiss: false,
-        // escapeDismiss: false,
-        // focusOutline: false,
+        animate: false
     };
 
     return (
@@ -280,20 +298,24 @@ const StackedDocumentReader = ()=> {
             {readingTime}<button onClick={clearTotalWorkTime}>res</button>
             <br></br>
             <button onClick={incFont}>+</button><button onClick={decFont}>-</button>
-            <button onClick={addQuestionsFromDocument}>q</button>
             <button onClick={restorePosition}>r</button>
-            <button onClick={flashCards}>f</button><br></br>
             <button onClick={translate}>Tran</button> 
             <button onClick={getFailedCards}>Hard</button>             
             <br></br>
             <button onClick={clearAllCards}>clr F</button> 
             <button onClick={testQuestion}>Test</button> 
             <button onClick={explainPara}>Explain</button> 
+            <button onClick={esimple}>ESimple</button> 
+            
             <br></br>
             <button onClick={()=>{ directAIExplain("Explain the grammar of this text:");}}>Ex Grammar</button>
-            <button onClick={()=>{ directAIExplain("Summarize this text in chinese:");}}>Sum</button>
+            <button onClick={()=>{ directAIExplain("What are the nouns in this text:");}}>Nouns</button>
             <button onClick={()=>{ directAIExplain("What are the verbs in this text:");}}>Verbs</button>
-            <button onClick={()=>{ directAIExplain("Make a list of questions related to this text:");}}>List</button>
+            <button onClick={()=>{ directAIExplain("Summarize this text in HSK 6 level Chinese:");}}>Sum</button><br></br>
+            <button onClick={()=>{ directAIExplain("Make a list of the nouns and the verbs in this text:");}}>Word list</button>
+            <button onClick={()=>{ directAIExplain("Rewrite this in chinese so that a HSK 6 student could understand:");}}>Rewrite</button>
+            <button onClick={()=>{ directAIExplain("Rewrite this in chinese using only simple words:");}}>Simple</button>
+
         </Overlay>
         <Container>
             <Navigation></Navigation>

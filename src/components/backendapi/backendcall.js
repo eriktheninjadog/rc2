@@ -20,8 +20,6 @@ const backEndCall = async (endpoint,parameters,successcallback, errorcallback) =
     });
 }
 
-
-
 const amazonTranslateFromChinese = (chinesetext,callback) => {
     backEndCall("translatechinese",
     {
@@ -234,9 +232,7 @@ const directAIQuestionBackend = async (cwsid,question,start,end,successcallback)
     );
 } 
 
-
 const explainParagraph = async (cwsid,para) => {
-
     backEndCall("explain_paragraph",
     {
         cwsid:cwsid,
@@ -250,4 +246,45 @@ const explainParagraph = async (cwsid,para) => {
     );
 }
 
-export  {directAIQuestionBackend,deleteById,explainParagraph,getTestQuestion,amazonTranslateFromChinese,updateDictionary,directAIAnalyze,directAIAnalyzeGrammar,directAISummarize,directAISimplify,localLookup,getCwsVocabulary,dictionaryLookup,getImportedTexts,getCwsById,addQuestions,backEndCall,addTextToBackground,lookUpPosition};
+const storeValueOnServer = async (storage,key,value) => {
+    backEndCall("set_stored_value",
+    {
+        storage:storage,
+        key:key,
+        value:value
+    },
+    ()=>{
+
+    },(error) => {
+        console.log(error);
+    }
+    );
+}
+
+const retrieveValueFromServer = async (storage,key,callback) => {
+    backEndCall("get_stored_value",
+    {
+        storage:storage,
+        key:key
+    },
+    callback
+    ,(error) => {
+        console.log(error);
+    }
+    );
+}
+
+const extensibleSimplify = async (cwsid,callback) => {
+    backEndCall("ai_simplify_cws",
+    {
+        cwsid:cwsid
+    },
+    callback
+    ,(error) => {
+        console.log(error);
+    }
+    );
+}
+
+
+export  {extensibleSimplify,retrieveValueFromServer,storeValueOnServer,directAIQuestionBackend,deleteById,explainParagraph,getTestQuestion,amazonTranslateFromChinese,updateDictionary,directAIAnalyze,directAIAnalyzeGrammar,directAISummarize,directAISimplify,localLookup,getCwsVocabulary,dictionaryLookup,getImportedTexts,getCwsById,addQuestions,backEndCall,addTextToBackground,lookUpPosition};
