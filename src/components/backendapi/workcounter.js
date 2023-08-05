@@ -10,7 +10,7 @@ if (localStorage.getItem('totalWorkTime') == undefined) {
 }
 
 
-let upperCutOff = 120;
+let upperCutOff = 240;
 
 const addToWorkTime = () => {
     let now = new Date().getTime()

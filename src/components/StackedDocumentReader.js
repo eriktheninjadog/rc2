@@ -4,7 +4,7 @@ import Pagination from 'react-bootstrap/Pagination';
 import Navigation from "./Navigation";
 import { Row,Col,Button,Container } from "react-bootstrap";
 import { UserContext } from "../App";
-import {extensibleSimplify,retrieveValueFromServer,storeValueOnServer,directAIQuestionBackend, explainParagraph,getTestQuestion, amazonTranslateFromChinese, dictionaryLookup,directAIAnalyze,directAIAnalyzeGrammar,directAISummarize,directAISimplify,localLookup, addQuestions, getCwsById, lookUpPosition } from "./backendapi/backendcall";
+import { fakeWiki,extensibleSimplify,retrieveValueFromServer,storeValueOnServer,directAIQuestionBackend, explainParagraph,getTestQuestion, amazonTranslateFromChinese, dictionaryLookup,directAIAnalyze,directAIAnalyzeGrammar,directAISummarize,directAISimplify,localLookup, addQuestions, getCwsById, lookUpPosition } from "./backendapi/backendcall";
 import {getFailedCards,saveCardsToStorage,clearAllCards, addWordIfNotExist, sizeOfDeck} from "./backendapi/flashcardengine" 
 import { clearTotalWorkTime,getTotalWorkTime,addToWorkTime } from "./backendapi/workcounter";
 
@@ -288,6 +288,10 @@ const StackedDocumentReader = ()=> {
         extensibleSimplify(cwsid, result => {console.log(result)});
     }
 
+    const fake = async () => {
+        fakeWiki(result => {console.log(result)});
+    }
+
     const configs = {
         animate: false
     };
@@ -306,6 +310,7 @@ const StackedDocumentReader = ()=> {
             <button onClick={testQuestion}>Test</button> 
             <button onClick={explainPara}>Explain</button> 
             <button onClick={esimple}>ESimple</button> 
+            <button onClick={fake}>Fake</button> 
             
             <br></br>
             <button onClick={()=>{ directAIExplain("Explain the grammar of this text:");}}>Ex Grammar</button>
