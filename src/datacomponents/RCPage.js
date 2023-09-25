@@ -5,13 +5,14 @@
 
 class RCPage {
 
-    constructor(content,cwsid,acwstext) {
+    constructor(content,cwsid,acwstext,title) {
         if (content == null) {
             throw "Content can't be null";
         }
         this.content = content;
         this.cwsid = cwsid;
         this.cwstext = acwstext;
+        this.title = title;
         console.log('this.cwstext =  ' + this.cwstext);
     }
 

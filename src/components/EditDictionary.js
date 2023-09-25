@@ -20,8 +20,6 @@ const EditDictionary = () => {
 
     const navigate = useNavigate();
 
-
-
     if (jyutping.length == 0) {        
         dictionaryLookup(searchParams.get('term'),term =>
         {
@@ -45,6 +43,7 @@ const EditDictionary = () => {
 
     const getJyutping = () => {
         let chi = chineseField.current.value;
+        jyutpingField.current.value = '';
         for (var i=0;i<chi.length;i++) {
             let cha = chi[i];
             dictionaryLookup(''+cha, term=> {
@@ -54,6 +53,9 @@ const EditDictionary = () => {
     }
 
     const plecoAction = () => {
+        /*
+        "/editdictionary?term="+modalheading
+        */
         let url = 'plecoapi://x-callback-url/s?q='+ encodeURI(chineseField.current.value);
         window.open(url)
     }
@@ -69,16 +71,22 @@ const EditDictionary = () => {
     return (
         <div>
             <Container>
-            <Navigation></Navigation>
+            <Navigation></Navigation><br></br>
+            {
+                searchParams.get('term').split('').map( (name, index)=>{
+                    return <a href= {"/editdictionary?term=" + name}>{name}</a>
+                }  )
+
+            }                
+            <br></br>
             <input type="text" size="30" ref={chineseField} ></input><br></br>
             <input type="text" size="30" ref={jyutpingField}></input><br></br>
-            <textarea ref={definitionField}>
+            <textarea ref={definitionField} rows={15} cols={30}>
             </textarea><br></br>
             <button onClick={update}>Post</button><br></br>
             <button onClick={plecoAction}>Pleco</button>
             <button onClick={translateAction}>Translate</button>
             <button onClick={getJyutping}>Jyutping</button>
-
             </Container>
         </div>
     );

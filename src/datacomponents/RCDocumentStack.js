@@ -23,7 +23,8 @@ class RCDocumentStack {
                         var content = page.content;
                         var cwsid = page.cwsid;
                         var cwstext = page.cwstext;
-                        newDoc.addPage(new RCPage(content,cwsid,cwstext));
+                        var title = page.title;
+                        newDoc.addPage(new RCPage(content,cwsid,cwstext,title));
                     }
                 );
                 this.push(newDoc);
@@ -43,7 +44,7 @@ class RCDocumentStack {
     addArrayOfCwsAsDocument(arr) {
         let doc = new RCDocument();
         arr.forEach(val=>{            
-            let p = new RCPage(val[2],val[0],val[3]);
+            let p = new RCPage(val[2],val[0],val[3],val[1]);
             doc.addPage(p);
         });
         this.push(doc);
@@ -72,7 +73,7 @@ class RCDocumentStack {
 
     addSingleCwsAsDocument(val) {
         let doc = new RCDocument();
-        let p = new RCPage(val[2],val[0],val[3]);
+        let p = new RCPage(val[2],val[0],val[3],val[6]);
         doc.addPage(p);
         this.push(doc);
         this.saveToLocaLStorage();

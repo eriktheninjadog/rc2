@@ -40,7 +40,6 @@ const FlashCard = ()=> {
         picked = pickWord();
         setHeader(picked);
         setDeckSize( sizeOfDeck() );
-        addToWorkTime();
         setTimeout(()=>{
             if (Math.random() > 0.8 ) {
                 writeField.current.value = '';
@@ -51,35 +50,8 @@ const FlashCard = ()=> {
     }
 
     const showBackside = () => {
-        addToWorkTime();
         setPronounce(getJyutpingFlashcard(header));
-        setDefinition(getDefinitionFlashcard(header));
-        // so this is where it gets tricky!
-        let examples = value.documentStack.getExamples(header);
-        let r = '';
-        for (var i=0;i<examples.length && i < 10;i++) {
-            r = r + examples[i] + '\n'         
-        }
-        r = r.replaceAll(header,'^<b>^'+header+'^</b>^')
-        let rr ='';
-        // here we have our litle thingie
-        let htmloff = true;
-        for (var j=0;j<r.length;j++) {
-            if (r[j] == '^') {
-                htmloff = !htmloff;
-            } else {
-                if (htmloff) {
-                    if (r[j] == '\n')
-                        rr = rr + "</br>";
-                    else
-                        rr = rr + '<span>' + r[j] + '</span>'
-                }
-                else {
-                    rr = rr + r[j];
-                }
-            }
-        }
-        setContent(rr);        
+        setDefinition(getDefinitionFlashcard(header));               
     }
 
     const simpleLookup = (event) => {
@@ -95,12 +67,10 @@ const FlashCard = ()=> {
 
     const flipButton = () => {
         showBackside();
-        addToWork();
     }
 
     const nextButton = () => {
         pickNewWord();
-        addToWork();
     }
 
     const successButton = () => {
@@ -120,7 +90,6 @@ const FlashCard = ()=> {
     const failureButton = () => {
         invalidateWord(header);
         pickNewWord();
-        addToWork();
     }
 
     const randomButton = () => {
@@ -140,23 +109,11 @@ const FlashCard = ()=> {
                 <input type="text" ref={writeField}></input><br></br>
                 <h2>{pronounce}</h2><br></br>
                  <span>{definition}</span><br></br>
-                 <span dangerouslySetInnerHTML={{__html: content}} onClick={simpleLookup}></span><br></br>                    
-                 <Row>
-                <Col md={2}><Button className="btn-block mr-1 mt-1 btn-lg"
- onClick={flipButton}>Flip</Button>
-                </Col>
-                <Col md={2}><Button className="btn-block mr-1 mt-1 btn-lg" onClick={successButton}>Success</Button>
-                </Col>
-                <Col md={2}>
-                <Button className="btn-block mr-1 mt-1 btn-lg" onClick={failureButton}>Failure</Button>                
-                </Col>
-                <Col md={2}>
+                <Button className="btn-block mr-1 mt-1 btn-lg" onClick={flipButton}>Flip</Button>
+                <Button className="btn-block mr-1 mt-1 btn-lg" onClick={successButton}>Success</Button>                
+                <Button className="btn-block mr-1 mt-1 btn-lg" onClick={failureButton}>Failure</Button>                                
                 <Button className="btn-block mr-1 mt-1 btn-lg" onClick={nextButton}>Next</Button>
-                </Col>
-                <Col md={2}>
                 <Button className="btn-block mr-1 mt-1 btn-lg" onClick={randomButton}>Random</Button>                
-                </Col>
-                </Row>             
             </Container>
         </div>
     )

@@ -98,6 +98,28 @@ const getCwsById = async (cwsid,callback) => {
     });
 }
 
+const updateCws = async (cwsid,text,callback) => {
+    backEndCall("updatecws",
+    { 
+        cwsid:cwsid,
+        text:text    
+    },
+    callback,
+    (error) => {
+        console.log(error);
+    });
+}
+
+
+const getCharacterCWS = async (title,callback) => {
+    backEndCall("get_character_cws",
+    { title:title},
+    callback,
+    (error) => {
+        console.log(error);
+    });
+}
+
 
 const deleteById = async (cwsid,callback) => {
     backEndCall("deletecws",
@@ -232,7 +254,22 @@ const directAIQuestionBackend = async (cwsid,question,start,end,successcallback)
     );
 } 
 
-const explainParagraph = async (cwsid,para) => {
+
+const directAIQuestionsBackend = async (cwsid,questions,start,end,successcallback)  => {
+    backEndCall("direct_ai_questions",
+    {
+        cwsid:cwsid,
+        start:start,
+        end:end,
+        questions:questions
+    },
+    successcallback,(error) => {
+        console.log(error);
+    }
+    );
+} 
+
+    const explainParagraph = async (cwsid,para) => {
     backEndCall("explain_paragraph",
     {
         cwsid:cwsid,
@@ -287,6 +324,20 @@ const extensibleSimplify = async (cwsid,callback) => {
 }
 
 
+const extensibleApplyAI = async (cwsid,aitext,callback) => {
+    backEndCall("apply_ai",
+    {
+        cwsid:cwsid,
+        aitext:aitext
+    },
+    callback
+    ,(error) => {
+        console.log(error);
+    }
+    );
+}
+
+
 const fakeWiki = async (callback) => {
     backEndCall("ai_summarize_random",
     {
@@ -299,5 +350,69 @@ const fakeWiki = async (callback) => {
 }
 
 
+const createWordList = async (id,callback) => {
+    backEndCall("get_word_list",
+    {
+        cwsid:id
+    },
+    callback
+    ,(error) => {
+        console.log(error);
+    }
+    );
+}
 
-export  {fakeWiki,extensibleSimplify,retrieveValueFromServer,storeValueOnServer,directAIQuestionBackend,deleteById,explainParagraph,getTestQuestion,amazonTranslateFromChinese,updateDictionary,directAIAnalyze,directAIAnalyzeGrammar,directAISummarize,directAISimplify,localLookup,getCwsVocabulary,dictionaryLookup,getImportedTexts,getCwsById,addQuestions,backEndCall,addTextToBackground,lookUpPosition};
+const addlookup = async (cwsid,term,) => {
+    backEndCall("add_look_up",
+    {
+        cwsid:cwsid,
+        term:term
+    },
+    result=>{console.log(result);}
+    ,(error) => {
+        console.log(error);
+    }
+    );
+}
+
+
+const lookuphistory = async (cwsid,callback) => {
+    backEndCall("get_look_up_history",
+    {
+        cwsid:cwsid
+    },
+    callback
+    ,(error) => {
+        console.log(error);
+    }
+    );
+}
+
+const classify = async (cwsid,callback) => {
+    backEndCall("get_classification",
+    {
+        cwsid:cwsid
+    },
+    callback
+    ,(error) => {
+        console.log(error);
+    }
+    );
+}
+
+
+const getMemoryDevice = async (title,callback) => {
+    backEndCall("getmemorystory",
+    {
+        character:title
+    },
+    callback
+    ,(error) => {
+        console.log(error);
+    }
+    );
+
+}
+
+
+export  {getMemoryDevice,updateCws,getCharacterCWS,directAIQuestionsBackend,classify, lookuphistory,addlookup,extensibleApplyAI,createWordList,fakeWiki,extensibleSimplify,retrieveValueFromServer,storeValueOnServer,directAIQuestionBackend,deleteById,explainParagraph,getTestQuestion,amazonTranslateFromChinese,updateDictionary,directAIAnalyze,directAIAnalyzeGrammar,directAISummarize,directAISimplify,localLookup,getCwsVocabulary,dictionaryLookup,getImportedTexts,getCwsById,addQuestions,backEndCall,addTextToBackground,lookUpPosition};

@@ -1,12 +1,12 @@
-import React, { useState,useEffect } from "react";
+import React, { useState,useEffect, useRef } from "react";
 
 import Pagination from 'react-bootstrap/Pagination';
 import Navigation from "./Navigation";
 import { Row,Col,Button,Container } from "react-bootstrap";
 import { UserContext } from "../App";
-import { fakeWiki,extensibleSimplify,retrieveValueFromServer,storeValueOnServer,directAIQuestionBackend, explainParagraph,getTestQuestion, amazonTranslateFromChinese, dictionaryLookup,directAIAnalyze,directAIAnalyzeGrammar,directAISummarize,directAISimplify,localLookup, addQuestions, getCwsById, lookUpPosition } from "./backendapi/backendcall";
-import {getFailedCards,saveCardsToStorage,clearAllCards, addWordIfNotExist, sizeOfDeck} from "./backendapi/flashcardengine" 
-import { clearTotalWorkTime,getTotalWorkTime,addToWorkTime } from "./backendapi/workcounter";
+import { getMemoryDevice,updateCws,getCharacterCWS, directAIQuestionsBackend   ,classify,lookuphistory,addlookup,createWordList,fakeWiki,extensibleApplyAI,extensibleSimplify,retrieveValueFromServer,storeValueOnServer,directAIQuestionBackend, explainParagraph,getTestQuestion, amazonTranslateFromChinese, dictionaryLookup,directAIAnalyze,directAIAnalyzeGrammar,directAISummarize,directAISimplify,localLookup, addQuestions, getCwsById, lookUpPosition } from "./backendapi/backendcall";
+import { getFailedCards,saveCardsToStorage,clearAllCards, addWordIfNotExist, sizeOfDeck} from "./backendapi/flashcardengine" 
+import { getTotalReadCharacter,addCharactersToWork,clearTotalWorkTime,getTotalWorkTime,addToWorkTime } from "./backendapi/workcounter";
 
 
 import Overlay from "react-overlay-component";
@@ -19,6 +19,8 @@ import Modal from 'react-bootstrap/Modal';
 const StackedDocumentReader = ()=> {
 
     const [show, setShow] = useState(false);
+
+    const [knownChars, setknownChars] = useState([]);
 
     const handleClose = () => setShow(false);
     const handleShow = () => setShow(true);
@@ -44,13 +46,15 @@ const StackedDocumentReader = ()=> {
     const [stackDepth,setStackDepth] = useState(0);
     const [isOpen, setOverlay] = useState(false);
 
+
+    const editArea = useRef();
+
     const closeOverlay = () => {
         setOverlay(false);
-        restorePosition();
     }
 
     const openOverlay = () => {
-        addToWorkTime();
+        addToWork();
         let g = storedPosition;
         g[cwsid] = window.pageYOffset;
         setStoredPosition(g);
@@ -58,7 +62,7 @@ const StackedDocumentReader = ()=> {
     }
 
     const setPage = idx => {
-        addToWorkTime();
+        addToWork();
         docreader.setPage(idx);
         setActivePage(idx);
     }
@@ -69,6 +73,11 @@ const StackedDocumentReader = ()=> {
     }
 
     const simpleLookup = (event) => {
+        
+        if (event.target.id == "") {
+            restorePosition();
+            return;
+        }
 
         if (event.target.id == lastElementId) {
             lookup(event);
@@ -82,6 +91,7 @@ const StackedDocumentReader = ()=> {
 
         if (parseInt(event.target.id) > window.furthestRead  ) {
             console.log('storing value on server;' + parseInt(event.target.id))
+            addCharactersToWork(parseInt(event.target.id) - window.furthestRead );
             storeValueOnServer('bookmarks','furthest_read'+cwsid,parseInt(event.target.id));            
         }
 
@@ -98,13 +108,25 @@ const StackedDocumentReader = ()=> {
         setStoredPosition(g);
         let word =event.target.innerText;
         setmodalheading(word);
+
+        if (word.length > 10) {
+            return;
+        }
+        if (window.known == undefined) {
+            window.known = [];
+        }
+        window.known.push(word);
+        if (word.length > 0 && word != '。' &&  word != ',' && word != '」' && word != '」' && word != '？')
+            addlookup(cwsid,word);
         dictionaryLookup(word,result => {
             setmodalcontent(result[0] +  " " + result[1] + " " + result[2]);
             addWordIfNotExist(word);
             saveCardsToStorage();
+            /*
+            for now we will not doing flashcards unless we are above 17 exposure
             if (sizeOfDeck() > 10 ) {
                 window.location.href = 'flash';
-            }
+            }*/
         });
         handleShow();
         setlastLastElementId(lastElementId);
@@ -154,6 +176,8 @@ const StackedDocumentReader = ()=> {
 
     let text ='';
     let cwstext = [];
+    let cwstitle = '';
+
     if (docreader != null) {
         let active = docreader.visiblePageNr();
         if (stackDepth != value.documentStack.depth()) {
@@ -166,23 +190,60 @@ const StackedDocumentReader = ()=> {
             </Pagination.Item>
         );
         }
+
         text = docreader.getPage().getContent();  
         cwsid = docreader.getPage().getCwsId();
         cwstext =docreader.getPage().cwstext;
-        setTimeout(restorePosition,1000);
+        cwstitle = docreader.getPage().title;
+        
         retrieveValueFromServer('bookmarks','furthest_read'+cwsid, furthestRead => {
             if (furthestRead == null) {
                 window.furthestRead = 0;
+                editArea.current.value = text;
+
             } else {
                 window.furthestRead = furthestRead;
                 document.getElementById(''+furthestRead).style.background = '#9999FF'
+                editArea.current.value = text;
             }
         });
         addToWorkTime();
     }
 
+
+    const returnClassName = char => {
+
+        if (window.classify != undefined) {
+            if (window.classify.hasOwnProperty(char)) {
+                console.log('found');
+                return "Appname";
+            }
+            else {
+                console.log('not found');
+                
+            }
+        }
+        
+        if (window.known == undefined) {
+            return "App";
+        }
+        
+        if (window.known.includes(char)) {
+            console.log("known " + char);
+            return "Appknown";
+        }
+
+        return "App";
+    }
+
+    let boldState = false;
+
     const mapHTMLToCharacter= (c,index) => {
         idcounter++;
+        if (c == '_')  {
+            boldState = true;
+            return;
+        }
         if (c == '\n') {
             return (<br id={index}></br>)
         }
@@ -190,7 +251,12 @@ const StackedDocumentReader = ()=> {
             return (<span id={index}>&nbsp;</span>)
         }
         idcounter += c.length - 1;
-        return (<span orgidx={idcounter}  id={index} className="App"> {c}</span>);
+        if (boldState == false)
+            return (<span orgidx={idcounter}  id={index} className={ returnClassName(c)} > {c}</span>);
+            else {
+                boldState = false;
+                return (<span orgidx={idcounter}  id={index} className="Appname" >{c}</span>);
+            }
     }
 
     const incFont = () => {
@@ -218,6 +284,17 @@ const StackedDocumentReader = ()=> {
                     setActivePage(0);
                     setStackDepth(value.documentStack.depth());
                 });
+    }
+
+    const checkCharacterDetails = (stringofchars) => {
+        for (let i=0;i<stringofchars.length;i++) {
+            getCharacterCWS( stringofchars[i],
+            data => {
+                    value.documentStack.addSingleCwsAsDocument(data);
+                    setActivePage(0);
+                    setStackDepth(value.documentStack.depth());
+                });
+            }
     }
 
     const directAIExplain = async (question) => {
@@ -256,6 +333,25 @@ const StackedDocumentReader = ()=> {
         closeOverlay();
     }
 
+    const directAIExplains = async (questions) => {
+        let end = parseInt(lastElementId);
+        let start = parseInt(lastLastElementId);
+        if (end < start) {
+            var tmp = lastElementId;
+            lastElementId = lastLastElementId;
+            lastLastElementId = tmp;
+        }
+        let orgStart = parseInt(document.getElementById(lastLastElementId ).getAttribute('orgidx'));
+        orgStart -= document.getElementById(lastLastElementId ).innerText.length;
+        let orgEnd = document.getElementById(lastElementId).getAttribute('orgidx');   
+        directAIQuestionsBackend(cwsid,questions,orgStart,parseInt(orgEnd), cws => { 
+            value.documentStack.addSingleCwsAsDocument(cws);
+            setActivePage(0);
+            setStackDepth(value.documentStack.depth());
+        });    
+        closeOverlay();
+    }
+
     const translate = async () => {
         let end = parseInt(lastElementId);
         let start = parseInt(lastLastElementId);
@@ -282,24 +378,69 @@ const StackedDocumentReader = ()=> {
         explainParagraph(cwsid,txt);
     }
 
+    const wordlist = async () => {
+        createWordList(cwsid,result => {
+            alert('wordlist ready');
+        });
+    }
 
     const esimple = async () => {
         alert('Esimple are you sure?');
         extensibleSimplify(cwsid, result => {console.log(result)});
     }
 
-    const fake = async () => {
-        fakeWiki(result => {console.log(result)});
+    const eApplyAI= async (aitext)  => {
+        alert('EApply are you sure?');
+        extensibleApplyAI(cwsid,aitext,result => {console.log(result)} )
     }
+
+    const readability = async () => {
+        lookuphistory(cwsid,
+            result => {
+                alert( '' + (1.0 - (result.length/cwstext.length))   );
+                window.known = result;
+        });
+    }
+
+    const markread = async () => {
+        lookuphistory(-1,
+            result => {
+                alert( '' + (1.0 - (result.length/cwstext.length))   );
+                window.known = result;
+        });
+    }
+
+
+    const editText = async () => {
+        updateCws(cwsid,editArea.current.value,
+            data => {
+                console.log(data);
+            }
+            );
+    }
+
+    const memoryDevice = async () => {
+        getMemoryDevice(cwstitle,
+            data => {
+                editArea.current.value  = data + '\n' + editArea.current.value;
+            }
+            );
+    }
+
 
     const configs = {
         animate: false
     };
 
+
+
+
     return (
         <div>
         <Overlay configs={configs} isOpen={isOpen} closeOverlay={closeOverlay}>
-            {readingTime}<button onClick={clearTotalWorkTime}>res</button>
+            {cwstitle}
+            <br></br>
+            {readingTime}/{getTotalReadCharacter()}<button onClick={clearTotalWorkTime}>res</button>{((getTotalReadCharacter()/readingTime)*1.6)*60}
             <br></br>
             <button onClick={incFont}>+</button><button onClick={decFont}>-</button>
             <button onClick={restorePosition}>r</button>
@@ -310,17 +451,27 @@ const StackedDocumentReader = ()=> {
             <button onClick={testQuestion}>Test</button> 
             <button onClick={explainPara}>Explain</button> 
             <button onClick={esimple}>ESimple</button> 
-            <button onClick={fake}>Fake</button> 
-            
+            <button onClick={()=>{eApplyAI('Rewrite this using chinese so that a 12 year old child would understand:');}}>EApply 12</button>
+            <button onClick={()=>{eApplyAI('Rewrite this using chinese so that a 10 year old child would understand:');}}>EApply 10</button>             
+            <button onClick={()=>{eApplyAI('Rewrite this using chinese so that a 8 year old child would understand:');}}>EApply 8</button>
+            <button onClick={()=>{eApplyAI('Rewrite this using chinese so that a 6 year old child would understand:');}}>EApply 6</button>
+            <button onClick={()=>{eApplyAI('Rewrite this using chinese so that an intermediate student of chinese would understand');}}>EApply student</button>
+            <button onClick={()=>{eApplyAI('Rewrite this using chinese using only simple words and very short sentences');}}>Simple&Short</button>
+            <button onClick={()=>{eApplyAI('Rewrite this using chinese using short sentences and words that a 8 year old would understand');}}>Simple&Short8</button>            
+            <button onClick={()=>{eApplyAI('Rewrite this using chinese using short sentences, words that a child old would understand and put a _ before all personal names:');}}>Names</button>
+            <button onClick={wordlist}>Wordlist</button>             
             <br></br>
-            <button onClick={()=>{ directAIExplain("Explain the grammar of this text:");}}>Ex Grammar</button>
-            <button onClick={()=>{ directAIExplain("What are the nouns in this text:");}}>Nouns</button>
-            <button onClick={()=>{ directAIExplain("What are the verbs in this text:");}}>Verbs</button>
-            <button onClick={()=>{ directAIExplain("Summarize this text in HSK 6 level Chinese:");}}>Sum</button><br></br>
-            <button onClick={()=>{ directAIExplain("Make a list of the nouns and the verbs in this text:");}}>Word list</button>
-            <button onClick={()=>{ directAIExplain("Rewrite this in chinese so that a HSK 6 student could understand:");}}>Rewrite</button>
-            <button onClick={()=>{ directAIExplain("Rewrite this in chinese using only simple words:");}}>Simple</button>
-
+            <button onClick={()=>{ directAIExplains([
+                "Translate this text to english",
+                "Rewrite this text in chinese so that a child could understand",
+                "Rewrite this text in chinese so that a teenager would understand",
+                "Rewrite this text in chinese using synonyms",
+                "Rewrite this text in chinese make it more sophisticated",
+                "Explain the grammar points in this text",
+                "List parts of speech in this text"                
+                ]);}}>Deep analysis</button>
+            <button onClick={readability}>Read %</button>
+            <button onClick={markread}>markread</button>
         </Overlay>
         <Container>
             <Navigation></Navigation>
@@ -350,6 +501,8 @@ const StackedDocumentReader = ()=> {
                 return mapHTMLToCharacter(c,index)
             })}
             </div>
+            <textarea cols={30} rows={20} defaultValue={text} ref={editArea}></textarea><br></br>
+            <button onClick={memoryDevice}>memory</button><button onClick={editText}>Update</button>
             </Container>
             <Modal show={show} onHide={handleClose}>
             <Modal.Header closeButton>
@@ -359,6 +512,7 @@ const StackedDocumentReader = ()=> {
         <Modal.Footer>
           <Button variant="secondary" onClick={handleClose}>Close </Button>
           <a href={"/editdictionary?term="+modalheading}>edit</a>
+          <Button variant="secondary" onClick={()=>{checkCharacterDetails(modalheading);}}>Details </Button>          
         </Modal.Footer>
       </Modal>
         </div>

@@ -9,8 +9,6 @@ import { useRef } from "react";
 const ImportTextPage = ()=> {
     const value = React.useContext(UserContext);  
     //let docreader = value.documentStack.visibleDocument(value.documentStack.depth());
-
-
     const textarea = useRef();
     const title = useRef();
 
@@ -25,6 +23,17 @@ const ImportTextPage = ()=> {
         backEndCall('version',{},
         result=> { console.log(result)},
         error => { console.log(error)});
+    }
+
+    const importAuth = async () => {
+        console.log('did auth');
+        
+        fetch('https://chinese.eriktamm.com/api/set_ai_auth?auth_part=' + textarea.current.value).then(function (response) {
+            console.log(response);
+        })
+        .catch(function (error) {
+            console.log(error);
+        });
     }
 
     const processText = () => {
@@ -54,10 +63,13 @@ const ImportTextPage = ()=> {
         <textarea  ref={textarea} cols="30" rows="10">
             </textarea>
         <br></br>    
-        <button  onClick={processText}> Submit</button>
+        <button onClick={processText}> Submit</button>
+        <button onClick={importAuth}> Auth</button>
+
         </Container>
         </div>
     );
 }
 
 export default ImportTextPage;
+

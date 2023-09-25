@@ -2,6 +2,11 @@
   text-align: center;
 }
 
+.Appknown {
+  text-align: center;
+}
+
+
 .App-logo {
   height: 40vmin;
   pointer-events: none;
@@ -41,6 +46,30 @@ span.App {
   display: inline-block;
   font-size: var(--reading-font-size);
 }
+
+span.Appknown {
+  margin:0px;
+  margin-right: 0px;
+  margin-left: 0px;
+  padding-right:0px;
+  padding-left:0px;
+  display: inline-block;
+  font-size: var(--reading-font-size);
+  color: darkslategrey;
+}
+
+span.Appname {
+  margin:0px;
+  margin-right: 0px;
+  margin-left: 0px;
+  padding-right:0px;
+  padding-left:0px;
+  display: inline-block;
+  font-size: var(--reading-font-size);
+  font-weight: bold;
+}
+
+
 
 @keyframes App-logo-spin {
   from {
