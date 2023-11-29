@@ -4,8 +4,7 @@ import axios from "axios";
 import { addCardIfNotExist, saveCardsToStorage } from "./flashcardengine";
 
 import { TranslateClient, TranslateTextCommand } from "@aws-sdk/client-translate"; // ES Modules import
-
-
+import { publishCWSArrived } from "../eventsystem/Event";
 
 const backEndCall = async (endpoint,parameters,successcallback, errorcallback) => {
     console.log('endpont:' + endpoint);
@@ -14,6 +13,20 @@ const backEndCall = async (endpoint,parameters,successcallback, errorcallback) =
     .then(function (response) {
         console.log(response.data.result);
         successcallback(response.data.result)
+    })
+    .catch(function (error) {
+        errorcallback(error)
+    });
+}
+
+
+const backEndCallWithCWS = async (endpoint,parameters, errorcallback) => {
+    console.log('endpont:' + endpoint);
+    console.log(parameters);
+    axios.post('https://chinese.eriktamm.com/api/'+endpoint, parameters)
+    .then(function (response) {
+        console.log(response.data.result);
+        publishCWSArrived(response.data.result);
     })
     .catch(function (error) {
         errorcallback(error)
@@ -89,10 +102,9 @@ const getCwsVocabulary = (cwsid)=> {
     });    
 }
 
-const getCwsById = async (cwsid,callback) => {
-    backEndCall("getcws",
+const getCwsById = async (cwsid) => {
+    backEndCallWithCWS("getcws",
     { cwsid:cwsid},
-    callback,
     (error) => {
         console.log(error);
     });
@@ -102,7 +114,7 @@ const updateCws = async (cwsid,text,callback) => {
     backEndCall("updatecws",
     { 
         cwsid:cwsid,
-        text:text    
+        text:text
     },
     callback,
     (error) => {
@@ -124,6 +136,18 @@ const getCharacterCWS = async (title,callback) => {
 const deleteById = async (cwsid,callback) => {
     backEndCall("deletecws",
     { cwsid:cwsid},
+    callback,
+    (error) => {
+        console.log(error);
+    });
+}
+
+const hideById = async (cwsid,callback) => {
+    backEndCall("changecwsstatus",
+    { 
+        cwsid:cwsid,
+        status:1
+    },
     callback,
     (error) => {
         console.log(error);
@@ -255,6 +279,60 @@ const directAIQuestionBackend = async (cwsid,question,start,end,successcallback)
 } 
 
 
+const grammarBackend = async (cwsid,start,end,successcallback)  => {
+    backEndCall("grammartest",
+    {
+        cwsid:cwsid,
+        start:start,
+        end:end
+    },
+    successcallback,(error) => {
+        console.log(error);
+    }
+    );
+} 
+
+
+const testUnderstandingBackend = async (cwsid,start,end,successcallback)  => {
+    backEndCall("testunderstanding",
+    {
+        cwsid:cwsid,
+        start:start,
+        end:end
+    },
+    successcallback,(error) => {
+        console.log(error);
+    }
+    );
+} 
+
+
+const testVocabBackend = async (cwsid,start,end,successcallback)  => {
+    backEndCall("testvocabulary",
+    {
+        cwsid:cwsid,
+        start:start,
+        end:end
+    },
+    successcallback,(error) => {
+        console.log(error);
+    }
+    );
+} 
+
+
+
+const getnewsBackend = async (successcallback)  => {
+    backEndCall("news",
+    {
+    },
+    successcallback,(error) => {
+        console.log(error);
+    }
+    );
+} 
+
+
 const directAIQuestionsBackend = async (cwsid,questions,start,end,successcallback)  => {
     backEndCall("direct_ai_questions",
     {
@@ -269,7 +347,8 @@ const directAIQuestionsBackend = async (cwsid,questions,start,end,successcallbac
     );
 } 
 
-    const explainParagraph = async (cwsid,para) => {
+
+const explainParagraph = async (cwsid,para) => {
     backEndCall("explain_paragraph",
     {
         cwsid:cwsid,
@@ -279,6 +358,18 @@ const directAIQuestionsBackend = async (cwsid,questions,start,end,successcallbac
         console.log("explainParagraph success")
     },(error) => {
         console.log(error);
+    }
+    );
+}
+
+
+const callPoe = async (cwsid,text,bot,clear,successcallback) => {   
+    backEndCallWithCWS("poefree",
+    {
+        cwsid:cwsid,
+        text:text,
+        bot:bot,
+        clear:clear
     }
     );
 }
@@ -409,10 +500,11 @@ const getMemoryDevice = async (title,callback) => {
     callback
     ,(error) => {
         console.log(error);
-    }
-    );
-
+    });
 }
 
 
-export  {getMemoryDevice,updateCws,getCharacterCWS,directAIQuestionsBackend,classify, lookuphistory,addlookup,extensibleApplyAI,createWordList,fakeWiki,extensibleSimplify,retrieveValueFromServer,storeValueOnServer,directAIQuestionBackend,deleteById,explainParagraph,getTestQuestion,amazonTranslateFromChinese,updateDictionary,directAIAnalyze,directAIAnalyzeGrammar,directAISummarize,directAISimplify,localLookup,getCwsVocabulary,dictionaryLookup,getImportedTexts,getCwsById,addQuestions,backEndCall,addTextToBackground,lookUpPosition};
+
+
+
+export  {callPoe,hideById,testUnderstandingBackend,testVocabBackend,getnewsBackend,grammarBackend,getMemoryDevice,updateCws,getCharacterCWS,directAIQuestionsBackend,classify, lookuphistory,addlookup,extensibleApplyAI,createWordList,fakeWiki,extensibleSimplify,retrieveValueFromServer,storeValueOnServer,directAIQuestionBackend,deleteById,explainParagraph,getTestQuestion,amazonTranslateFromChinese,updateDictionary,directAIAnalyze,directAIAnalyzeGrammar,directAISummarize,directAISimplify,localLookup,getCwsVocabulary,dictionaryLookup,getImportedTexts,getCwsById,addQuestions,backEndCall,addTextToBackground,lookUpPosition};

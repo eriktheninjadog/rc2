@@ -5,6 +5,9 @@ import RCDocumentReader from "./RCDocumentReader";
 import ls from 'local-storage'
 import RCPage from "./RCPage";
 
+import { EventType, publishCWSStackChanged } from "../components/eventsystem/Event";
+import { registerEventListener } from "../components/eventsystem/EventMarket";
+
 class RCDocumentStack {
 
     loadFromLocalStorage() {
@@ -30,6 +33,7 @@ class RCDocumentStack {
                 this.push(newDoc);
             });
         }
+        publishCWSStackChanged();
         console.log(this);
     }
 
@@ -39,6 +43,16 @@ class RCDocumentStack {
 
     constructor() {
         this.loadFromLocalStorage();
+        registerEventListener(
+            EventType.CWSArrived+"listener",
+            ev => {
+                return ev.type == EventType.CWSArrived;
+            },
+            ev => {
+                let cws = ev.data;
+                this.addSingleCwsAsDocument(cws);
+            }
+        );
     }
 
     addArrayOfCwsAsDocument(arr) {
@@ -49,6 +63,7 @@ class RCDocumentStack {
         });
         this.push(doc);
         this.saveToLocaLStorage();
+        publishCWSStackChanged();
     }
 
     getExamples(wrd) {
@@ -86,12 +101,15 @@ class RCDocumentStack {
     push(document) {
         this.stack.push( new RCDocumentReader(document));
         this.saveToLocaLStorage();
+        publishCWSStackChanged();
     }
 
     pop() {
         if (this.stack.length == 0)
             throw "No more documents to pop!!!"
-        this.saveToLocaLStorage();            
+        this.saveToLocaLStorage();
+        publishCWSStackChanged();
+
         return this.stack.pop();
     }
 

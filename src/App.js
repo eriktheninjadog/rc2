@@ -18,11 +18,29 @@ import StackedDocumentReader from './components/StackedDocumentReader';
 import FlashCard from './components/FlashCard';
 import EditDictionary from './components/EditDictionary';
 
+import {time_loop} from './components/timedfunctions'
+import { registerEventListener } from './components/eventsystem/EventMarket';
+import { EventType } from './components/eventsystem/Event';
+
 export const UserContext = React.createContext(null);
+
+setInterval(function () {time_loop();}, 1000);
+
 
 const App = () => {
 
   const [documentStack, setDocumentStack] = useState(new RCDocumentStack());
+
+  registerEventListener("gotoreaderonnewcws",
+    ev => {
+      return ev.type == EventType.CWSArrived;
+    },
+    ev => {
+      window.location.href = 'reader';
+    }
+  );
+
+
   return (
     <RecoilRoot>
     <BrowserRouter>

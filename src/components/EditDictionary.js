@@ -20,6 +20,17 @@ const EditDictionary = () => {
 
     const navigate = useNavigate();
 
+    function extractTextBetweenBraces(str) {
+        const regex = /{([^}]+)}/g;
+        const matches = str.match(regex);
+        
+        if (matches) {
+          return matches.map(match => match.slice(1, -1));
+        }
+        
+        return [];
+      }
+
     if (jyutping.length == 0) {        
         dictionaryLookup(searchParams.get('term'),term =>
         {
@@ -50,6 +61,11 @@ const EditDictionary = () => {
                 jyutpingField.current.value = jyutpingField.current.value + ' ' + term[1];
             });
         }
+    }
+
+    const extractJyutping = () => {
+        jyutpingField.current.value = extractTextBetweenBraces(definitionField.current.value);
+
     }
 
     const plecoAction = () => {
@@ -87,6 +103,7 @@ const EditDictionary = () => {
             <button onClick={plecoAction}>Pleco</button>
             <button onClick={translateAction}>Translate</button>
             <button onClick={getJyutping}>Jyutping</button>
+            <button onClick={extractJyutping}>Extract Jyutping</button>
             </Container>
         </div>
     );

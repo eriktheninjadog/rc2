@@ -9,14 +9,13 @@ import { UserContext } from "../App";
 
 import React from "react";
 
-import { directAIAnalyze,directAIAnalyzeGrammar,directAISummarize,directAISimplify,localLookup, addQuestions, getCwsById, lookUpPosition } from "./backendapi/backendcall";
+import { directAIAnalyze,directAIAnalyzeGrammar,directAISummarize,directAISimplify,localLookup, addQuestions, lookUpPosition } from "./backendapi/backendcall";
 import { purgeCards, sizeOfDeck, invalidateWord,validateWord,pickWord,getJyutpingFlashcard,getDefinitionFlashcard, clearAllCards } from "./backendapi/flashcardengine";
 import context from "react-bootstrap/esm/AccordionContext";
 import RCDocumentStack from "../datacomponents/RCDocumentStack";
 import { clearTotalWorkTime,getTotalWorkTime,addToWorkTime } from "./backendapi/workcounter";
 
-
-
+    
 const FlashCard = ()=> {
 
     const [header,setHeader] = useState('');
