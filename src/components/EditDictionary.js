@@ -68,6 +68,15 @@ const EditDictionary = () => {
 
     }
 
+
+    const mdbgAction = () => {
+        /*
+        "/editdictionary?term="+modalheading
+        */
+        let url = 'https://www.mdbg.net/chinese/dictionary?page=worddict&wdrst=1&wdqb='+ encodeURI(chineseField.current.value);
+        window.open(url)
+    }
+
     const plecoAction = () => {
         /*
         "/editdictionary?term="+modalheading
@@ -101,6 +110,8 @@ const EditDictionary = () => {
             </textarea><br></br>
             <button onClick={update}>Post</button><br></br>
             <button onClick={plecoAction}>Pleco</button>
+            <button onClick={mdbgAction}>mdbg</button>
+
             <button onClick={translateAction}>Translate</button>
             <button onClick={getJyutping}>Jyutping</button>
             <button onClick={extractJyutping}>Extract Jyutping</button>

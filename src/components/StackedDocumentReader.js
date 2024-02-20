@@ -4,10 +4,11 @@ import Pagination from 'react-bootstrap/Pagination';
 import Navigation from "./Navigation";
 import { Row,Col,Button,Container } from "react-bootstrap";
 import { UserContext } from "../App";
-import { callPoe,testUnderstandingBackend, testVocabBackend, getnewsBackend,grammarBackend, getMemoryDevice,updateCws,getCharacterCWS, directAIQuestionsBackend   ,classify,lookuphistory,addlookup,createWordList,fakeWiki,extensibleApplyAI,extensibleSimplify,retrieveValueFromServer,storeValueOnServer,directAIQuestionBackend, explainParagraph,getTestQuestion, amazonTranslateFromChinese, dictionaryLookup,directAIAnalyze,directAIAnalyzeGrammar,directAISummarize,directAISimplify,localLookup, addQuestions, lookUpPosition } from "./backendapi/backendcall";
+import { addTextToBackground,callPoe,testUnderstandingBackend, testVocabBackend, getnewsBackend,grammarBackend, getMemoryDevice,updateCws,getCharacterCWS, directAIQuestionsBackend   ,classify,lookuphistory,addlookup,createWordList,fakeWiki,extensibleApplyAI,extensibleSimplify,retrieveValueFromServer,storeValueOnServer,directAIQuestionBackend, explainParagraph,getTestQuestion, amazonTranslateFromChinese, dictionaryLookup,directAIAnalyze,directAIAnalyzeGrammar,directAISummarize,directAISimplify,localLookup, addQuestions, lookUpPosition } from "./backendapi/backendcall";
 import { getFailedCards,saveCardsToStorage,clearAllCards, addWordIfNotExist, sizeOfDeck} from "./backendapi/flashcardengine" 
 import { getTotalReadCharacter,addCharactersToWork,clearTotalWorkTime,getTotalWorkTime,addToWorkTime } from "./backendapi/workcounter";
 
+import { lookupOTC ,findCharactersWithComponent} from "../datacomponents/OTCLookup";
 import { addReminderItem,getReminderItems } from "../datacomponents/ReminderQueue";
 import Select from 'react-select'
 import { MultiSelect } from "react-multi-select-component";
@@ -20,9 +21,11 @@ import Overlay from "react-overlay-component";
 import { add_timed_event } from "./timedfunctions";
 
 
+
 import { lightColors, darkColors,Container as FloatContainer, Button as FloatButton, Link as FloatLink} from 'react-floating-action-button'
 
 import Modal from 'react-bootstrap/Modal';
+import { formToJSON } from "axios";
 
 const StackedDocumentReader = ()=> {
 
@@ -48,6 +51,7 @@ const StackedDocumentReader = ()=> {
     
     const [modalcontent,setmodalcontent] = useState();
     const [modalheading,setmodalheading] = useState();
+    const [cleanmodalheading,setcleanmodalheading] = useState();
 
     const [readingTime,setReadingTime] = useState(0);
 
@@ -84,16 +88,68 @@ const StackedDocumentReader = ()=> {
         setReadingTime( getTotalWorkTime() );
     }
 
+
+    
+
+    const makemodalheading = word => {
+        let ret = '';
+    
+        for(var i =0;i<word.length;i++) {
+            ret = ret + "<a href=\"javascript:window.lookupChar('" + word[i] + "');\">" + word[i] +'</a>'
+        }
+        return ret;
+    }
+
     const initListeners = () => {
+        window.lookupChar = (c) => {
+            publishReaderClickedTerm(c);
+        }
+
         registerEventListener("dictionarylookupfromregister",
         ev => {
             return ev.type == EventType.ReaderClickTerm;
         },
         ev => {
             let word = ev.data;
-            setmodalheading(word);
+            setcleanmodalheading(word);
+            setmodalheading(makemodalheading(word));
             dictionaryLookup(word,result => {
-                setmodalcontent(result[0] +  " " + result[1] + " " + result[2]);
+                console.log(' ok here we go! ' + word)
+                let content = result[0] +  " " + result[1] + " " + result[2] + "<br>";
+                for (var i in word) {
+
+                    let partOf = findCharactersWithComponent(word[i]);
+                    if (partOf.length > 0) {
+                        for(let ii=0;ii<partOf.length;ii++) {
+                            content = content + " " + partOf[ii];
+                        }
+                    }
+                    let lchar = lookupOTC(word[i]);
+                    if (lchar != null) {
+                        console.log('found it ' + JSON.stringify( lchar));
+                        content = content + "<br><b>" + word[i] + "</b>";
+                        content = content + "<br>" + lchar['meaning'];                        
+                        if (lchar['components'].length ==0 ) {
+                            content = '<br>'+content + '<br>'+lchar['full'];
+
+                        } else {
+                            let keys = Object.keys(lchar['components'])
+                            for(var i=0;i< keys.length;i++) {
+                                content = '<br>'+content + lchar['components'][keys[i]]+'<br>';
+
+                                let partOf = findCharactersWithComponent(keys[i]);
+                                if (partOf.length > 0) {
+                                    for(let ii=0;ii<partOf.length;ii++) {
+                                        content = content + "<a href=\"javascript:window.lookupChar('"+partOf[ii]+"');\">" + partOf[ii]+"</a>&nbsp; ";
+                                    }
+                                }
+
+                            }
+                        }
+                    }
+                }
+                setmodalcontent(content);
+
             });
             handleShow();
         }
@@ -132,11 +188,13 @@ const StackedDocumentReader = ()=> {
         }
 
         if (lastElementId != 0) {
+            /*
             if (document.getElementById(lastElementId) != null) 
                 document.getElementById(lastElementId).style.backgroundColor = "#DDDDFF";
+            */
         }
 
-        event.target.style.backgroundColor = "#DDDDDD"
+        event.target.style.backgroundColor = "#FFFFFF"
         let g = storedPosition;
         localStorage.setItem('bookmark'+cwsid, event.target.id);
 
@@ -159,6 +217,11 @@ const StackedDocumentReader = ()=> {
         publishReaderClickedTerm(word);
         addToWork();
         setlastElementId(event.target.id);
+        if (Math.random() > 0.90) {
+            window.randomSeed = Date.now();
+            seed = window.randomSeed;
+            vocabPage();
+        }
     }
 
     const pop = () => {
@@ -219,6 +282,19 @@ const StackedDocumentReader = ()=> {
         addToWorkTime();
     }
 
+    if (window.randomSeed == undefined) {
+        window.randomSeed = Date.now()
+    }
+    var seed = window.randomSeed;
+
+    function pseudorandomInRange() {        
+        var constant = 16807;
+        var modulus = 100;        
+        var retseed = (seed * constant) % modulus;        
+        seed +=1;
+        return retseed;
+      }
+
     const returnClassName = char => {
 
         if (window.classify != undefined) {
@@ -233,6 +309,10 @@ const StackedDocumentReader = ()=> {
         }
         
         if (window.known == undefined) {
+            /*if (pseudorandomInRange() == 0)
+                return "AppHide";
+            else
+            */
             return "App";
         }
         
@@ -241,11 +321,16 @@ const StackedDocumentReader = ()=> {
             return "Appknown";
         }
 
-        return "App";
+        if (pseudorandomInRange() == 0)
+            return "AppHide";
+        else
+            return "App";
     }
 
     let boldState = false;
     let totalOrgLength = 0;
+
+
 
     const mapHTMLToCharacter= (c,index) => {
         idcounter++;
@@ -297,15 +382,76 @@ const StackedDocumentReader = ()=> {
                 });
     }
 
+    function getRandomElementsFromArray(arr, count) {
+        const shuffled = arr.slice(); // Create a shallow copy of the array
+        let currentIndex = shuffled.length;
+        const desiredElements = [];
+      
+        // While there are elements to pick and shuffle
+        while (desiredElements.length < count && currentIndex > 0) {
+          const randomIndex = Math.floor(Math.random() * currentIndex);
+          currentIndex--;
+      
+          // Swap the current element with a randomly selected element
+          [shuffled[currentIndex], shuffled[randomIndex]] = [shuffled[randomIndex], shuffled[currentIndex]];
+      
+          // Add the selected element to the desired elements array
+          desiredElements.push(shuffled[currentIndex]);
+        }
+      
+        return desiredElements;
+      }
+      
+      function getRandomElementsFromArray(arr, count) {
+        const shuffled = arr.slice(); // Create a shallow copy of the array
+        let currentIndex = shuffled.length;
+        const desiredElements = [];
+      
+        // While there are elements to pick and shuffle
+        while (desiredElements.length < count && currentIndex > 0) {
+          const randomIndex = Math.floor(Math.random() * currentIndex);
+          currentIndex--;
+      
+          // Swap the current element with a randomly selected element
+          [shuffled[currentIndex], shuffled[randomIndex]] = [shuffled[randomIndex], shuffled[currentIndex]];
+      
+          // Add the selected element to the desired elements array
+          desiredElements.push(shuffled[currentIndex]);
+        }
+      
+        return desiredElements;
+      }
+      
+
+    const getCommonWords = (word) => {
+        if (Math.random() < 0.5 )
+            callPoe(cwsid,'Give me a list of common words in traditional chinese that contains : ' + word,'GPT-4', true);
+        else
+            callPoe(cwsid,'Give me a list of sample sentence in traditional chinese that contains : ' + word,'GPT-4', true);
+    }
+
     const checkCharacterDetails = (stringofchars) => {
-        for (let i=0;i<stringofchars.length;i++) {
-            getCharacterCWS( stringofchars[i],
-            data => {
-                    value.documentStack.addSingleCwsAsDocument(data);
-                    setActivePage(0);
-                    setStackDepth(value.documentStack.depth());
-                });
-            }
+        let cc = [];
+        for (let i =0;i<stringofchars.length;i++) {
+            let c = stringofchars[i];
+            let looks = lookupOTC(c);
+            if (looks != null) {
+                
+                let ba = Object.keys(looks['components']);
+                for (var jj = 0; jj<ba.length;jj++) {
+                    let comp = ba[jj];
+                    let partOf = findCharactersWithComponent(comp);
+                    if (partOf.length > 0) {
+                        for(let ii=0;ii<partOf.length;ii++) {
+                            cc.push(partOf[ii]);
+                        }
+                    }
+                }
+            }            
+        }
+        let thewords = getRandomElementsFromArray(cc,10);
+        callPoe(cwsid,'Write a paragraph of 100-200 words in traditional Chinese that contains all these characters: ' + thewords,'GPT-4', true);
+        handleClose();
     }
 
     const news = async () => {
@@ -404,7 +550,9 @@ const StackedDocumentReader = ()=> {
 
     const wordlist = async () => {
         createWordList(cwsid,result => {
-            alert('wordlist ready');
+            value.documentStack.addSingleCwsAsDocument(result);
+            setActivePage(0);
+            setStackDepth(value.documentStack.depth());
         });
     }
 
@@ -526,6 +674,23 @@ const StackedDocumentReader = ()=> {
         navigator.clipboard.writeText(txt);
     }
 
+
+    const vocabPage = () => {
+        let post = '';
+        let items =getReminderItems();
+        for (var i = 0;i < items.length;i++) {
+            post = post + ' ' + items[i];
+        }
+        let atitle = 'reminder list';
+        addTextToBackground(atitle,"remind me",post,-1,
+            data => {
+                value.documentStack.addSingleCwsAsDocument(data);
+                setActivePage(0);
+                setStackDepth(value.documentStack.depth());            
+                console.log(data)}  
+            );
+    }
+
     const remindMe = () => {
         let post = "Write a short story in traditional Chinese. The story should containing the following words:\n"
         if (Math.random() > 0.5)
@@ -579,9 +744,7 @@ const StackedDocumentReader = ()=> {
             "ppp", //15
             "aaa" //16
         ];
-
         initListeners();
-
     return (
         <div>
         <Overlay configs={configs} isOpen={isOpen} closeOverlay={closeOverlay}>
@@ -669,7 +832,8 @@ const StackedDocumentReader = ()=> {
             </Container>
             <Container id="thefulltext">
                 <div onClick={simpleLookup}>
-            {[...cwstext].map( (c,index) => {
+            {
+            [...cwstext].map( (c,index) => {
                 return mapHTMLToCharacter(c,index)
             })}
             </div>
@@ -678,13 +842,15 @@ const StackedDocumentReader = ()=> {
             </Container>
             <Modal show={show} onHide={handleClose}>
             <Modal.Header closeButton>
-          <Modal.Title>{modalheading}</Modal.Title>
+          <Modal.Title dangerouslySetInnerHTML={{__html: modalheading}}></Modal.Title>
         </Modal.Header>
         <Modal.Body dangerouslySetInnerHTML={{__html: modalcontent}}></Modal.Body>
         <Modal.Footer>
           <Button variant="secondary" onClick={handleClose}>Close </Button>
-          <a href={"/editdictionary?term="+modalheading}>edit</a>
-          <Button variant="secondary" onClick={()=>{checkCharacterDetails(modalheading);}}>Details </Button>          
+          <a href={"/editdictionary?term="+cleanmodalheading}>edit</a>
+          <Button variant="secondary" onClick={()=>{checkCharacterDetails(cleanmodalheading);}}>Details </Button>
+          <Button variant="secondary" onClick={()=>{getCommonWords(cleanmodalheading);}}>Common</Button>          
+
         </Modal.Footer>
       </Modal>
         </div>

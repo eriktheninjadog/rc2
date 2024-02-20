@@ -1,6 +1,8 @@
 import axios from "axios";
 
 
+
+
 import { addCardIfNotExist, saveCardsToStorage } from "./flashcardengine";
 
 import { TranslateClient, TranslateTextCommand } from "@aws-sdk/client-translate"; // ES Modules import
@@ -243,7 +245,7 @@ const directAISummarize = async (cwsid,p1,p2,successcallback)  => {
         p1:p1,
         p2:p2
     },
-    successcallback,(error) => {
+    successcallback,(error) => {    
         console.log(error);
     }
     );
