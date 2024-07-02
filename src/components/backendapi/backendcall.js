@@ -364,7 +364,6 @@ const explainParagraph = async (cwsid,para) => {
     );
 }
 
-
 const callPoe = async (cwsid,text,bot,clear,successcallback) => {   
     backEndCallWithCWS("poefree",
     {
@@ -375,6 +374,22 @@ const callPoe = async (cwsid,text,bot,clear,successcallback) => {
     }
     );
 }
+
+
+const callPoeWithCallback = async (cwsid,text,bot,clear,successcallback,errorcallback) => {   
+    backEndCall("poefree",
+    {
+        cwsid:cwsid,
+        text:text,
+        bot:bot,
+        clear:clear
+    },
+    successcallback,
+    errorcallback
+    );
+}
+
+
 
 const storeValueOnServer = async (storage,key,value) => {
     backEndCall("set_stored_value",
@@ -416,7 +431,6 @@ const extensibleSimplify = async (cwsid,callback) => {
     );
 }
 
-
 const extensibleApplyAI = async (cwsid,aitext,callback) => {
     backEndCall("apply_ai",
     {
@@ -430,7 +444,6 @@ const extensibleApplyAI = async (cwsid,aitext,callback) => {
     );
 }
 
-
 const fakeWiki = async (callback) => {
     backEndCall("ai_summarize_random",
     {
@@ -441,7 +454,6 @@ const fakeWiki = async (callback) => {
     }
     );
 }
-
 
 const createWordList = async (id,callback) => {
     backEndCall("get_word_list",
@@ -468,7 +480,6 @@ const addlookup = async (cwsid,term,) => {
     );
 }
 
-
 const lookuphistory = async (cwsid,callback) => {
     backEndCall("get_look_up_history",
     {
@@ -493,6 +504,71 @@ const classify = async (cwsid,callback) => {
     );
 }
 
+const getexamples = async (level,nr,onlyFailed,callback    ) => {
+    backEndCall("poeexamples",
+    {
+        level:level,
+        number:nr,
+        onlyFailed:onlyFailed,
+        language: 'spoken vernacular Cantonese'
+    },
+    callback
+    ,(error) => {
+        console.log(error);
+    }
+    )
+}
+
+const createexamples = async (question,level,callback    ) => {
+    backEndCall("poeexamples",
+    {
+        level:level,
+        number:10,
+        onlyFailed:false,
+        language: 'spoken vernacular Cantonese',
+        store:true,
+        question:question
+    },
+    callback
+    ,(error) => {
+        console.log(error);
+    }
+    )
+}
+
+const getExampleResult = async (callback) => {
+    backEndCall("getexampleresult",
+    {
+    },
+    callback
+    ,(error) => {
+        console.log(error);
+    }
+    )
+}
+
+const writeExampleResult = async (tokens,english,level,success,reason,callback    ) => {
+    const currentTime = Date.now();
+    let chinese = '';
+    for (var i=0;i<tokens.length;i++) {
+        chinese = chinese + tokens[i];
+    }
+    backEndCall("poeexampleresult",
+    {
+        chinese:chinese,
+        tokens:tokens,
+        english:english,
+        level:level,
+        success:success,
+        reason:reason,
+        time:currentTime
+    },
+    callback
+    ,(error) => {
+        console.log(error);
+    }
+    );
+}
 
 const getMemoryDevice = async (title,callback) => {
     backEndCall("getmemorystory",
@@ -505,8 +581,107 @@ const getMemoryDevice = async (title,callback) => {
     });
 }
 
+const addAudioTimeToBackend = async (timetoadd,callback) => {
+    backEndCall("addaudiotime",
+    {
+        amount:timetoadd
+    },
+    callback
+    ,(error) => {
+        console.log(error);
+    });
+}
+ 
+
+const addOutputExercise = async (english,chinesetokens,mp3name,type, result,milliseconds,whenutcmilliseconds,callback) => {
+    backEndCall("addoutputexercise",
+    {
+        english:english ,
+        chinesetokens:chinesetokens,
+        mp3name:mp3name,
+        type:type, 
+        result:result,
+        milliseconds:milliseconds,
+        whenutcmilliseconds:whenutcmilliseconds
+    },
+    callback
+    ,(error) => {
+        console.log(error);
+    });
+}
+
+const getTotalAudioTime = async (callback) => {
+    backEndCall("gettotalaudiotime",
+    {},
+    callback
+    ,(error) => {
+        console.log(error);
+    });
+}
+
+const getTotalOutputTime = async (callback) => {
+    backEndCall("gettotaloutputtime",
+    {},
+    callback
+    ,(error) => {
+        console.log(error);
+    });
+}
 
 
 
+const getAudioExample = async (callback) => {
+    backEndCall("audioexample2",
+    {},
+    callback
+    ,(error) => {
+        console.log(error);
+    });
+}
 
-export  {callPoe,hideById,testUnderstandingBackend,testVocabBackend,getnewsBackend,grammarBackend,getMemoryDevice,updateCws,getCharacterCWS,directAIQuestionsBackend,classify, lookuphistory,addlookup,extensibleApplyAI,createWordList,fakeWiki,extensibleSimplify,retrieveValueFromServer,storeValueOnServer,directAIQuestionBackend,deleteById,explainParagraph,getTestQuestion,amazonTranslateFromChinese,updateDictionary,directAIAnalyze,directAIAnalyzeGrammar,directAISummarize,directAISimplify,localLookup,getCwsVocabulary,dictionaryLookup,getImportedTexts,getCwsById,addQuestions,backEndCall,addTextToBackground,lookUpPosition};
+const getArticleAudioExample = async (callback) => {
+    backEndCall("audioexample3",
+    {},
+    callback
+    ,(error) => {
+        console.log(error);
+    });
+}
+
+
+const addMP3ToServer = async (text,callback) => {
+    backEndCall("makemp3fromtext",
+    {'text':text},
+    callback
+    ,(error) => {
+        console.log(error);
+    });
+}
+
+
+const addListenedTo = async (sentence,tokens, result,callback) => {
+    backEndCall("addlisteningexercise",
+    {
+        sentence:sentence ,
+        tokens:tokens,
+        result:result
+    },
+    callback
+    ,(error) => {
+        console.log(error);
+    });
+}
+
+const removeAudio = async (audiofile,callback) => {
+    backEndCall("remove_audio",
+    {
+        audiofile:audiofile
+    },
+    callback
+    ,(error) => {
+        console.log(error);
+    });
+}
+
+
+export  {removeAudio,addListenedTo,addMP3ToServer,getArticleAudioExample,createexamples,getAudioExample,getTotalOutputTime,getTotalAudioTime,addOutputExercise,callPoeWithCallback,addAudioTimeToBackend,getExampleResult,writeExampleResult,getexamples,callPoe,hideById,testUnderstandingBackend,testVocabBackend,getnewsBackend,grammarBackend,getMemoryDevice,updateCws,getCharacterCWS,directAIQuestionsBackend,classify, lookuphistory,addlookup,extensibleApplyAI,createWordList,fakeWiki,extensibleSimplify,retrieveValueFromServer,storeValueOnServer,directAIQuestionBackend,deleteById,explainParagraph,getTestQuestion,amazonTranslateFromChinese,updateDictionary,directAIAnalyze,directAIAnalyzeGrammar,directAISummarize,directAISimplify,localLookup,getCwsVocabulary,dictionaryLookup,getImportedTexts,getCwsById,addQuestions,backEndCall,addTextToBackground,lookUpPosition};

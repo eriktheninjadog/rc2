@@ -88,9 +88,6 @@ const StackedDocumentReader = ()=> {
         setReadingTime( getTotalWorkTime() );
     }
 
-
-    
-
     const makemodalheading = word => {
         let ret = '';
     
@@ -849,8 +846,7 @@ const StackedDocumentReader = ()=> {
           <Button variant="secondary" onClick={handleClose}>Close </Button>
           <a href={"/editdictionary?term="+cleanmodalheading}>edit</a>
           <Button variant="secondary" onClick={()=>{checkCharacterDetails(cleanmodalheading);}}>Details </Button>
-          <Button variant="secondary" onClick={()=>{getCommonWords(cleanmodalheading);}}>Common</Button>          
-
+          <Button variant="secondary" onClick={()=>{getCommonWords(cleanmodalheading);}}>Common</Button>
         </Modal.Footer>
       </Modal>
         </div>

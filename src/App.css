@@ -2,6 +2,18 @@
   text-align: center;
 }
 
+
+body {
+  font-family: Arial, sans-serif;
+  background-color: #f4f4f4;
+  margin: 0;
+  padding: 10px;
+}
+
+.form-group {
+  margin-bottom: 20px;
+}
+
 .Appknown {
   text-align: center;
 }

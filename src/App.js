@@ -14,6 +14,8 @@ import {
   useRecoilState,
   useRecoilValue,
 } from 'recoil';
+
+import OutputTraining from './components/OutputTraining';
 import StackedDocumentReader from './components/StackedDocumentReader';
 import FlashCard from './components/FlashCard';
 import EditDictionary from './components/EditDictionary';
@@ -52,6 +54,8 @@ const App = () => {
         <Route path="/reader" element={<StackedDocumentReader />} />
         <Route path="/flash" element={<FlashCard />} />
         <Route path="/editdictionary" element={<EditDictionary />} />
+        <Route path="/output" element={<OutputTraining />} />
+
     </Routes>
     </UserContext.Provider>
   </BrowserRouter>
