@@ -1,11 +1,95 @@
-import React, { startTransition, useState ,useRef} from 'react';
+import React, { startTransition, useState ,useRef,useEffect} from 'react';
 import Navigation from './Navigation';
 import IntelligentText from './IntelligentText';
 
-import {removeAudio,addListenedTo,addMP3ToServer,getArticleAudioExample,createexamples,getAudioExample,getTotalOutputTime,getTotalAudioTime, callPoeWithCallback,addAudioTimeToBackend,callPoe,getExampleResult, getexamples,writeExampleResult, addOutputExercise} from "./backendapi/backendcall"
+import {addSentence,removeAudio,addListenedTo,addMP3ToServer,getArticleAudioExample,createexamples,getAudioExample,getTotalOutputTime,getTotalAudioTime, callPoeWithCallback,addAudioTimeToBackend,callPoe,getExampleResult, getexamples,writeExampleResult, addOutputExercise, backEndCall} from "./backendapi/backendcall"
+
+
+const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+const mic = new SpeechRecognition();
 
 const OutputTraining = () => {
 
+
+
+  const [isListening, setIsListening] = useState(false);
+  const [noteText, setNoteText] = useState('');
+
+
+    useEffect(() => {
+      handleListen();
+    }, [isListening]);
+
+
+    function countWordInString(word, str) {
+      // Convert both the word and the string to lowercase for case-insensitive matching
+      const lowercaseWord = word.toLowerCase();
+      const lowercaseStr = str.toLowerCase();
+    
+      // Use a regular expression to find all occurrences of the word
+      const matches = lowercaseStr.match(new RegExp(lowercaseWord, 'g'));
+    
+      // If there are no matches, return 0
+      if (!matches) {
+        return 0;
+      }
+    
+      // Return the length of the matches array, which represents the count of the word
+      return matches.length;
+    }
+
+    const handleListen = () => {
+      if (isListening) {
+        mic.start();
+        mic.onend = () => {
+          console.log('Continue listening...');
+          mic.start();
+        };
+      } else {
+        mic.stop();
+        mic.onend = () => {
+          console.log('Stopped listening per click');
+        };
+      }
+      mic.onstart = () => {
+        console.log('Microphone is on');
+      };
+  
+      mic.onresult = (event) => {
+        const transcript = Array.from(event.results)
+          .map((result) => result[0])
+          .map((result) => result.transcript)
+          .join('');
+
+        for(var i=0; i < countWordInString('repeat',transcript);i++)  {
+          console.log(transcript);        
+          goBack(5);
+        }
+
+        for(var i=0; i < countWordInString('stop',transcript);i++)  {
+          console.log(transcript);        
+          audioRef.current.pause();
+        }
+
+
+        for(var i=0; i < countWordInString('start',transcript);i++)  {
+          console.log(transcript);        
+          audioRef.current.play();
+        }
+
+
+        //setNoteText(transcript);
+        mic.onerror = (event) => {
+          console.log(event.error);
+        };
+      };
+    };
+  
+  
+    const toggleRecording = () => {
+      setIsListening((prevState) => !prevState);
+    };
+    
 
     const [state, setState] = useState('state1');
     const [question,setQuestion] = useState('This is the sentence');
@@ -21,6 +105,7 @@ const OutputTraining = () => {
     const readmode = useState(false);
     
 
+    const iqRef = useRef(null);
     const audioRef = useRef(null);
 
     const [playbackRate, setPlaybackRate] = useState(1);
@@ -92,6 +177,44 @@ const OutputTraining = () => {
     }
 
 
+    const addSentence = () => {
+      let selection = window.getSelection().toString();
+      callPoeWithCallback(-1,"Explain this sentence,grammar and vocab using English" + ' : ' + selection,'Claude-3-Opus','Claude-3-Opus',result=>{
+        console.log(result);
+        console.log(intelligentTextRef);  
+
+        let txt = '';
+        let tkns = result[3];
+        // set the text to be spoken
+          for (var i=0;i< tkns.length;i++) {
+            if (tkns[i] == '\n') {
+              txt= txt + '<br/>';
+            } else
+              txt = txt + tkns[i];
+          }   
+        window.displayDialog(selection,txt);
+      },
+      error=>{
+        console.log(error);
+      }
+      );
+    }
+
+     const  threeExamples = async () => {
+      const clipboardText = await navigator.clipboard.readText();
+      let tmpquestion = 'Create 3 sentences in A1 level Cantonese containing this chunk: ' + clipboardText + ". Return these together with english translation in json format like this: [{\"english\":ENGLISH_SENTENCE,\"chinese\":CANTONESE_TRANSLATION}].Only respond with the json structure."
+      createexamples(tmpquestion,'A1', result => {
+        let baba = result;
+        console.log(baba);
+        let gdb = window.gamedatabase;   
+        for(var i =0 ; i < baba.length;i++) {
+            addOutputExercise(baba[i]['english'], JSON.stringify( baba[i]['chinese']),chosenLevel,2,1,0,Date.now(), result => {});
+           // gdb.push( {tokens:baba[i]['chinese'],english:baba[i]['english'] }   )
+        }
+        window.gamedatabase = gdb;
+      });
+    }
+
     const create = () => {
       //let mytokens = window.gamedatabase[pickedQuestionId].tokens;
       let mytokens = tokens;
@@ -125,6 +248,7 @@ const OutputTraining = () => {
         console.log(baba);
         let gdb = window.gamedatabase;   
         for(var i =0 ; i < baba.length;i++) {
+            addOutputExercise(baba[i]['english'], JSON.stringify( baba[i]['chinese']),chosenLevel,2,1,0,Date.now(), result => {});
             gdb.push( {tokens:baba[i]['chinese'],english:baba[i]['english'] }   )
         }
         window.gamedatabase = gdb;
@@ -325,34 +449,28 @@ const OutputTraining = () => {
   }
 
 
-  const addListenedToFromAudio =() => {
-    /*
-    if (window.currentSentences === undefined)
-      return;
-    if (window.currentSentences == null)
-      return;
-    console.log(window.currentSentences);
-    let sentences = window.currentSentences;
-    for (var i=0;i< sentences.length;i++) {
-      try {
-      let element = sentences[i];
-      let resultvalue = document.getElementById('result'+i).value;
-      let sent = '';
-        element.forEach( c => {
-          sent = sent + c;
-        });
-          console.log(' hi there' + document.getElementById('result'+i).value);
-        addListenedTo(sent,JSON.stringify(element),resultvalue, result => {console.log(result);});
-      } catch (e) {
-        return;
-      }
-    };
-    */
-
+  const  showMP3 = (event) => {
+    backEndCall('getspokenarticles',{},
+    result => {
+      window.mp3files = result;
+      setState('pickmp3');
+    },
+    error => {}
+    )
   }
 
-  const refreshAudio =  (event) => {
-    addListenedToFromAudio();
+  const pickAMP3=(event) => {
+    backEndCall('getspokenarticle',
+    {'mp3file':event.target.innerText,'next':false},
+    result => {
+      window.currentSentences = result['tokens'];
+      setTokens(result['tokens']);
+      audioRef.current.src = 'mp3/' +result['filepath'];
+      setState('statistics');
+    });
+  }
+
+  const getRandomAudioExample = () => {
     getAudioExample(result=> {    
       console.log(result['filepath']);
       window.currentSentences = result['tokens'];
@@ -377,10 +495,26 @@ const OutputTraining = () => {
       }
       setTokens(result['tokens']);
       audioRef.current.src = 'mp3/' +result['filepath'];
+      audioRef.current.play();
+
     })
+
+  }
+  const refreshAudio =  (event) => {
+    window.refreshAudioClicked = true;
+    //addListenedToFromAudio();
+    getRandomAudioExample();
+    //addKeyHandler
+  }
+
+  const mykeyhandler = (key) => {
+    if (key =='r') {
+      goBack(5);
+    }
   }
 
   const refreshArticleAudio =  (event) => {
+    window.refreshAudioClicked = false;
     getArticleAudioExample(result=> {    
       console.log(result['filepath']);
       setTokens(result['tokens']);
@@ -397,14 +531,62 @@ const OutputTraining = () => {
     audioRef.current.currentTime = window.playMark;
   }
 
+  const onAudioEnded = (event) => {
+
+    if ( document.getElementById('loopCheckbox').checked) {
+      setTimeout(()=> {
+          audioRef.current.play();
+      }
+      ,
+      2000);      
+      return;
+    }
+
+    if ( window.refreshAudioClicked ) {
+      getRandomAudioExample();
+      return;
+    }
+
+    if ( document.getElementById('nextCheckbox').checked) {
+      const path = audioRef.current.src.split('/').pop();
+      // Remove any query parameters
+      let file =  path.split('?')[0];
+  
+      backEndCall('getspokenarticle',
+      {'mp3file':file,'next':true},
+      result => {   
+        window.currentSentences = result['tokens'];
+        setTokens(result['tokens']);  
+        audioRef.current.src = 'mp3/' +result['filepath'];
+        setState('statistics');
+        setTimeout(() => {
+          audioRef.current.play();
+        } ,3000);
+      });
+    }
+  }
+
   const handleTimeUpdate = (event) => {
     let now = Date.now();
     window.currentPlayTime  = event.target.currentTime;
     let timePassed = now - window.lastTime;
+    //console.log(' cur ' + event.target.currentTime + ' ' + event.target.duration + ' ' +(event.target.currentTime / event.target.duration));
+    //console.log(' tokens  ' + tokens.length);
+    let chosentoken =  Math.round(tokens.length*(event.target.currentTime / event.target.duration));
+    
+    if (document.getElementById('tokenid' +chosentoken ) != undefined) {
+      document.getElementById('tokenid' +chosentoken ).style.backgroundColor = 'grey';
+    }
+
+    if (document.getElementById('tokenid' +(chosentoken-1) ) != undefined) {
+      document.getElementById('tokenid' +(chosentoken-1) ).style.backgroundColor = 'white';
+    }
+
+
     if (timePassed < 50000) {
         window.combinedTime += timePassed;
         if (window.combinedTime > 10000) {
-          console.log('adding time');
+          //console.log('adding time');
           addOutputExercise("tralalallala","tralalala","mp3",1,0,window.combinedTime,Date.now(),
           result => {});
           window.combinedTime = 0;
@@ -435,8 +617,6 @@ const OutputTraining = () => {
   audioRef.current.currentTime = audioRef.current.currentTime - (amount);
  };
 
-
-
   return (
     
     <container>
@@ -449,6 +629,7 @@ const OutputTraining = () => {
         <button onClick={() => changeState('showquestion')}>showquestion</button>
         <button onClick={() => changeState('showanswer')}>howanswer</button>
         <button onClick={() => changeState('addstuff')}>add stuff</button>
+        <button onClick={() => showMP3()}>mp3</button>        
         <button onClick={() => showStatistics()}>statistics</button>        
       </div>
       <div>
@@ -486,7 +667,7 @@ const OutputTraining = () => {
                 />
                 Read
               </label>
-              <IntelligentText tokens={tokens}></IntelligentText> 
+              <IntelligentText tokens={tokens} keyhandler={mykeyhandler} ></IntelligentText> 
                 </div>
                 <div class="form-group">                
                 <label for="sizeid">Size</label><input id="sizeid" type="text" size={3} value={chosenNumber} maxLength={2} onChange={(event)=>{setChosenNumber(event.target.value);
@@ -581,6 +762,19 @@ const OutputTraining = () => {
  
           </div>
         )}        
+
+        {state === 'pickmp3' && (
+          <div>
+            <h2>mp3 files</h2>
+           { window.mp3files.map( (value,index,array) =>
+                    {
+                      window.refreshAudioClicked = false;
+                            return (<span><a onClick={pickAMP3}>{value}</a><br></br></span>)
+                      }) 
+            }
+          </div>
+        )}        
+
       </div>
       <br></br>
       <div
@@ -588,18 +782,25 @@ const OutputTraining = () => {
               position: 'fixed',
               top: '0',
               width: '100%',
-              backgroundColor: '#333',
-              color: '#fff',
+              backgroundColor: '#FFFFFF',
+              color: '#000',
               padding: '0rem',
               textAlign: 'left',
             }}
       >
-      <audio controls onTimeUpdate={handleTimeUpdate} onPlay={handleStartPlay} ref={audioRef} loop>
+      
+      <audio controls onTimeUpdate={handleTimeUpdate} onEnded={onAudioEnded} onPlay={handleStartPlay} ref={audioRef}>
       <source src={"https://chinese.eriktamm.com/api/audioexample?dd=" + Date.now() } type="audio/mp3"/>
       </audio>
-      <div>
+      l<input type="checkbox"  id="loopCheckbox"></input>
+      n<input type="checkbox" id="nextCheckbox"></input>
+      <button onClick={() => addSentence()}>add</button>
+      <button onClick={() => threeExamples()}>3</button>                
+      <br></br>
+      <button onClick={toggleRecording}>
+        {isListening ? 'oR' : 'aR'}
+        </button>
         <button onClick={() => handleSpeedChange(0.5)}>0.5x</button>
-        <button onClick={() => handleSpeedChange(0.75)}>0.75x</button>
         <button onClick={() => handleSpeedChange(1)}>1x</button>
         <button onClick={() => refreshAudio()}>Ref</button>
         <button onClick={() => refreshArticleAudio()}>RefA</button>
@@ -616,11 +817,10 @@ const OutputTraining = () => {
             alert(file);
             removeAudio(file);
         }
-
-
-
-        }>KILL</button>
-               
+        }>KILL</button><br></br>
+    
+              <div>
+          
       </div>
       </div>      
       <p>Current Playback Speed: {playbackRate}x</p>

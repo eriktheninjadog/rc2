@@ -12,6 +12,7 @@ import { Row,Col,Button,Container } from "react-bootstrap";
 import Modal from 'react-bootstrap/Modal';
 
 import { lookupOTC ,findCharactersWithComponent} from "../datacomponents/OTCLookup";
+import { keyboard } from '@testing-library/user-event/dist/keyboard';
 
 let tokens = [ 'a',' ','dog',' ','is',' ','nice']; 
 
@@ -47,6 +48,19 @@ const createexamples = async (question,level,callback    ) => {
     )
 }
 
+
+const addToExamplesFromDialog = (chinese,english) => {
+    let examples = []
+    examples.push({'english':english.replaceAll('<br/>','\n'),'chinese':chinese})
+    backEndCall('add_examples_to_cache',{
+        'examples':examples
+        },
+        result => {
+            alert('done');
+        },
+        error => {}
+        );
+}
 
 
 const checkCharacterDetails = (stringofchars) => {
@@ -97,8 +111,7 @@ const IntelligentText = (props)=> {
     const [modalcontent,setmodalcontent] = useState('');
     const [show,setShow] = useState(false);
 
-
-
+    
     const innerMenu = (event) => {
         
         let children = Array.from(event.target.parentNode.children);
@@ -113,14 +126,15 @@ const IntelligentText = (props)=> {
 
         // we back backwards
         found--;
+        let anothercollection = [];
         while (children[found].outerHTML.indexOf('<br>') == -1) {
-            collection = collection + children[found].innerHTML;
+            collection = collection + children[found].innerText;
+            anothercollection.push(children[found].innerText);
             found--;
         }
-        const reversedStr = collection.split('').reverse().join('');
-
-
-
+        //alert(anothercollection);
+        anothercollection.reverse();
+        const reversedStr = anothercollection.join('');
 
         callPoeWithCallback(-1,'Explain this sentence using English : ' + reversedStr,'Claude-3-Opus',false,result=>{
 
@@ -133,7 +147,7 @@ const IntelligentText = (props)=> {
                 } else
                   txt = txt + tkns[i];
               }   
-            window.displayDialog('hi there',txt);
+            window.displayDialog(reversedStr,txt);
           },
           error=>{
             console.log(error);
@@ -167,83 +181,29 @@ const IntelligentText = (props)=> {
         dictionaryLookup(modalheading,result => {
             console.log(' ok here we go! ' + word)
             let content = result[0] +  " " + result[1] + " " + result[2] + "<br>";
-            /*
-            for (var i in word) {
-                let partOf = findCharactersWithComponent(word[i]);
-                if (partOf.length > 0) {
-                    for(let ii=0;ii<partOf.length;ii++) {
-                        content = content + " " + partOf[ii];
-                    }
-                }
-                let lchar = lookupOTC(word[i]);
-                if (lchar != null) {
-                    console.log('found it ' + JSON.stringify( lchar));
-                    content = content + "<br><b>`" + word[i] + "</b>";
-                    content = content + "<br>" + lchar['meaning'];                        
-                    if (lchar['components'].length ==0 ) {
-                        content = '<br>'+content + '<br>'+lchar['full'];
-
-                    } else {
-                        let keys = Object.keys(lchar['components'])
-                        for(var i=0;i< keys.length;i++) {
-                            content = '<br>'+content + lchar['components'][keys[i]]+'<br>';
-
-                            let partOf = findCharactersWithComponent(keys[i]);
-                            if (partOf.length > 0) {
-                                for(let ii=0;ii<partOf.length;ii++) {
-                                    content = content + "<a href=\"javascript:window.lookupChar('"+partOf[ii]+"');\">" + partOf[ii]+"</a>&nbsp; ";
-                                }
-                            }
-
-                        }
-                    }
-                }
-            }*/
+       
             alert(content);
             setmodalcontent(content);
         });
         setShow(true);
     }
 
+
+    const onMyKeyDown = (event) => {
+        props.keyhandler(event.key);
+    }
+
     const handleClick = (event) => {
         modalheading = event.target.innerText;
         let word = modalheading;
         navigator.clipboard.writeText(word);
+        if (word.length > 10) {
+            return;    
+        }
         dictionaryLookup(modalheading,result => {
             console.log(' ok here we go! ' + word)
             let content = result[0] +  " " + result[1] + " " + result[2] + "<br>";
 
-            /*for (var i in word) {
-                let partOf = findCharactersWithComponent(word[i]);
-                if (partOf.length > 0) {
-                    for(let ii=0;ii<partOf.length;ii++) {
-                        content = content + " " + partOf[ii];
-                    }
-                }
-                let lchar = lookupOTC(word[i]);
-                if (lchar != null) {
-                    console.log('found it ' + JSON.stringify( lchar));
-                    content = content + "<br><b>`" + word[i] + "</b>";
-                    content = content + "<br>" + lchar['meaning'];                        
-                    if (lchar['components'].length ==0 ) {
-                        content = '<br>'+content + '<br>'+lchar['full'];
-
-                    } else {
-                        let keys = Object.keys(lchar['components'])
-                        for(var i=0;i< keys.length;i++) {
-                            content = '<br>'+content + lchar['components'][keys[i]]+'<br>';
-
-                            let partOf = findCharactersWithComponent(keys[i]);
-                            if (partOf.length > 0) {
-                                for(let ii=0;ii<partOf.length;ii++) {
-                                    content = content + "<a href=\"javascript:window.lookupChar('"+partOf[ii]+"');\">" + partOf[ii]+"</a>&nbsp; ";
-                                }
-                            }
-
-                        }
-                    }
-                }
-            }*/
             setmodalcontent(content);
         });
         setShow(true);
@@ -252,8 +212,8 @@ const IntelligentText = (props)=> {
     window.code = false;
      return (
         (
-            <div>
-            <div onClick={handleClick}>
+            <div  onKeyDown={onMyKeyDown}  style={{ outline: 'none' }}         tabIndex="0">
+            <div onClick={handleClick} id="smarttext" style={{ outline: 'none' }}>
                 {
                 props.tokens.map(
                     (value,index,array) => {
@@ -267,7 +227,7 @@ const IntelligentText = (props)=> {
                         if (value=='\n')
                             return (<a onClick={innerMenu}>*<br></br></a>);
                         else
-                            return (<span style={{fontSize:30}}>{value}</span>);
+                            return (<span style={{fontSize:30}} id={"tokenid"+index}>{value}</span>);
                     })
                 }
             </div>
@@ -291,6 +251,7 @@ const IntelligentText = (props)=> {
                 }
 
             }); }}>CExample </Button>
+            <Button variant="secondary" onClick={()=>{addToExamplesFromDialog(modalheading,modalcontent)}}>addit</Button>
             
             </Modal.Footer>
             </Modal>
