@@ -95,6 +95,7 @@ const OutputTraining = () => {
     const [question,setQuestion] = useState('This is the sentence');
     const [chinese,setChinese] = useState('This is the chinese');
     const [tokens,setTokens] = useState([]);
+    const [times,setTimes] = useState(null);
     const [pickedQuestionId,setPickedQuestionId] = useState(-1);
     const [chosenLevel,setChosenLevel] = useState('');
     const [chosenNumber,setChosenNumber] = useState(10);
@@ -105,7 +106,6 @@ const OutputTraining = () => {
     const readmode = useState(false);
     
 
-    const iqRef = useRef(null);
     const audioRef = useRef(null);
 
     const [playbackRate, setPlaybackRate] = useState(1);
@@ -202,7 +202,7 @@ const OutputTraining = () => {
 
      const  threeExamples = async () => {
       const clipboardText = await navigator.clipboard.readText();
-      let tmpquestion = 'Create 3 sentences in A1 level Cantonese containing this chunk: ' + clipboardText + ". Return these together with english translation in json format like this: [{\"english\":ENGLISH_SENTENCE,\"chinese\":CANTONESE_TRANSLATION}].Only respond with the json structure."
+      let tmpquestion = 'Create 3 sentences in B1 level Cantonese containing this chunk: ' + clipboardText + ". Return these together with english translation in json format like this: [{\"english\":ENGLISH_SENTENCE,\"chinese\":CANTONESE_TRANSLATION}].Only respond with the json structure."
       createexamples(tmpquestion,'A1', result => {
         let baba = result;
         console.log(baba);
@@ -474,29 +474,15 @@ const OutputTraining = () => {
     getAudioExample(result=> {    
       console.log(result['filepath']);
       window.currentSentences = result['tokens'];
-      let tmptok = [];
-      for (var t = 0; t < result['tokens'].length;t++) {
-        let senttok = result['tokens'][t];
-        console.log(senttok);
-        for (var i = 0;i<senttok.length;i++) {
-          tmptok.push(senttok[i]);
-        }
-        tmptok.push('~');
-        let str = '';
-        str = str + '<select id=result'+t+'>';
-        for(var i=0;i<10;i++) {
-          str = str + '<option value="'+i+'">'+i+'</option>';
-        }
-        str = str + '</select>'
-        tmptok.push(str);
-        //tmptok.push('<input type="checkbox" size=1 value=0 id=result'+t+' onclick="return true;"></input>');        
-        tmptok.push('~')
-        tmptok.push('\n');
-      }
       setTokens(result['tokens']);
       audioRef.current.src = 'mp3/' +result['filepath'];
       audioRef.current.play();
-
+      setTimes()
+      if (result['times'] != null) {
+        setTimes(result['times']);
+      } else {
+        setTimes(null);
+      }
     })
 
   }
@@ -508,18 +494,70 @@ const OutputTraining = () => {
   }
 
   const mykeyhandler = (key) => {
+
+    let backKeys = ['`','1','2','3','4','5'];
+    let engKeys = ['6','7','8','9','0','-','+'];
+
+    let startKeys = ['a','s','d','f','g'];
+    let pauseKeys = ['h','j','k','l',';','\''];
+
+    for (let i=0;i<backKeys.length;i++) {
+      if (key == backKeys[i]) {
+        goBack(5);  
+      }
+    }
+
+    for (let i=0;i<engKeys.length;i++) {
+      if (key == engKeys[i]) {
+        englishVersion();
+      }
+    }
+
+    for (let i=0;i<startKeys.length;i++) {
+      if (key == startKeys[i]) {
+        audioRef.current.play();
+      }
+    }
+
+    for (let i=0;i<pauseKeys.length;i++) {
+      if (key == pauseKeys[i]) {
+        audioRef.current.pause();
+      }
+    }
+
+    /*
+
+
     if (key =='r') {
       goBack(5);
     }
+    if (key =='e') {
+      englishVersion();
+    }
+
+    if (key =='s') {
+      readStatistics();
+    }
+    */
   }
 
-  const refreshArticleAudio =  (event) => {
-    window.refreshAudioClicked = false;
-    getArticleAudioExample(result=> {    
-      console.log(result['filepath']);
-      setTokens(result['tokens']);
-      audioRef.current.src = 'mp3/' +result['filepath'];
-    })
+  const readStatistics = () => {
+
+    getTotalOutputTime( total => {
+      getTotalAudioTime( totalaudiotime => {
+
+        playEnglishTranslation( formatTime(total[0]/1000) +' ' + formatTime(total[1]/1000)  + ' Audio:'+ formatTime(totalaudiotime[0]/1000) +' ' + formatTime(totalaudiotime[1]/1000)
+        ,
+          () => {
+            audioRef.current.pause();
+          },
+          () => {
+            audioRef.current.currentTime = window.lastSentenceStartTime;
+            audioRef.current.play();
+          }
+        )
+      });
+    });
   }
 
 
@@ -566,9 +604,54 @@ const OutputTraining = () => {
     }
   }
 
+
+  const englishVersion = () => {
+    playEnglishTranslation( window.lastSentence,
+      () => {
+        audioRef.current.pause();
+      },
+      () => {
+        audioRef.current.currentTime = window.lastSentenceStartTime;
+        audioRef.current.play();
+      }
+    )
+  }
+
+
+  const playEnglishTranslation = (text,onStart,onEnd) => {
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.onend = function(event) {
+      onEnd();
+    };
+    utterance.onerror = function(event) {
+      console.error('An error occurred:', event.error);
+    };
+    onStart();
+    speechSynthesis.speak(utterance);
+  }
+
+  const findLineFromTime = (timepoint) =>{
+    if (times == null) {
+      console.log('no times given');
+      return;
+    }
+    for (var i=0;i<times.length;i++) {
+      let startAt = times[i][2];
+      let duration = times[i][3];
+      if (timepoint > startAt && timepoint < (startAt+duration)) {
+        window.lastSentence = times[i][1];
+        window.lastSentenceStartTime = times[i][2];
+      }
+    }
+  }
+
   const handleTimeUpdate = (event) => {
     let now = Date.now();
+
+    if (document.getElementById('iqtextid') != null ) 
+      document.getElementById('iqtextid').focus();
     window.currentPlayTime  = event.target.currentTime;
+    findLineFromTime(window.currentPlayTime);
     let timePassed = now - window.lastTime;
     //console.log(' cur ' + event.target.currentTime + ' ' + event.target.duration + ' ' +(event.target.currentTime / event.target.duration));
     //console.log(' tokens  ' + tokens.length);
@@ -638,7 +721,7 @@ const OutputTraining = () => {
             <h2>Start Test</h2>
             <div class="form-group">
             <label for="level">Level</label><select id = "level">
-                <option value="A1">A1</option>
+                <option value="A1">B1</option>
                 <option value="A2">A2</option>
                 <option value="B1">B1</option>
                 <option value="B2">A2</option>
@@ -667,7 +750,7 @@ const OutputTraining = () => {
                 />
                 Read
               </label>
-              <IntelligentText tokens={tokens} keyhandler={mykeyhandler} ></IntelligentText> 
+              <IntelligentText tokens={tokens} keyhandler={mykeyhandler}></IntelligentText> 
                 </div>
                 <div class="form-group">                
                 <label for="sizeid">Size</label><input id="sizeid" type="text" size={3} value={chosenNumber} maxLength={2} onChange={(event)=>{setChosenNumber(event.target.value);
@@ -706,7 +789,7 @@ const OutputTraining = () => {
           </div>
           <div class="form-group">                        
           <input type="text" size={50} ref={correctedEnglish}></input>
-          <IntelligentText tokens={tokens}></IntelligentText>
+          <IntelligentText tokens={tokens} keyhandler={mykeyhandler} ></IntelligentText>
           <button onClick={freeai}>FreeAi</button><br></br>
           <select id="explainFormat">
             <option>Explain this sentence using English</option>
@@ -758,7 +841,7 @@ const OutputTraining = () => {
           <div>
             <h2>Statistics 3 Content {chosenLevel}</h2>
             <p>Total time: {totalTimeString}</p>
-            <IntelligentText tokens={tokens}></IntelligentText>
+            <IntelligentText tokens={tokens} keyhandler={mykeyhandler} ></IntelligentText>
  
           </div>
         )}        
@@ -803,11 +886,11 @@ const OutputTraining = () => {
         <button onClick={() => handleSpeedChange(0.5)}>0.5x</button>
         <button onClick={() => handleSpeedChange(1)}>1x</button>
         <button onClick={() => refreshAudio()}>Ref</button>
-        <button onClick={() => refreshArticleAudio()}>RefA</button>
         <button onClick={() => setMark()}>M</button>
         <button onClick={() => goMark()}>G</button>
-        <button onClick={() => goBack(2)}>{"<<"}</button>
         <button onClick={() => goBack(5)}>{"<<<"}</button>
+        <button onClick={() =>  englishVersion()  }>{"eng"}</button>
+        
         <button onClick={() => startManualTime()}>M sta</button>
         <button onClick={() => stopManualTime()}>M sto</button>
         <button onClick={() => {

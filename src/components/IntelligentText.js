@@ -212,7 +212,7 @@ const IntelligentText = (props)=> {
     window.code = false;
      return (
         (
-            <div  onKeyDown={onMyKeyDown}  style={{ outline: 'none' }}         tabIndex="0">
+            <div  onKeyDown={onMyKeyDown}  style={{ outline: 'none' }}    id={"iqtextid"}     tabIndex="0">
             <div onClick={handleClick} id="smarttext" style={{ outline: 'none' }}>
                 {
                 props.tokens.map(
