@@ -240,7 +240,14 @@ const IntelligentText = (props)=> {
             <Button variant="secondary" onClick={handleClose}>Close </Button>
             <a href={"/editdictionary?term="+modalheading}>edit</a>
             <Button variant="secondary" onClick={()=>{checkCharacterDetails(cleanmodalheading);}}>Details </Button>
-            <Button variant="secondary" onClick={()=>{createexamples("Create 3 sentences in A1 level Cantonese containing this chunk:"+modalheading + ". Return these together with english translation in json format like this: [{\"english\":ENGLISH_SENTENCE,\"chinese\":CANTONESE_TRANSLATION}].Only respond with the json structure.","A1",result=>{
+            <Button variant="secondary" onClick={()=>{
+                let exampleChunk = modalheading;
+                const selection = window.getSelection();
+                const isEmpty = selection.toString() === '';
+                if (!isEmpty) {
+                    exampleChunk = selection.toString();                    
+                }
+                createexamples("Create 3 sentences in B1 level Cantonese containing this chunk:"+exampleChunk + ". Return these together with english translation in json format like this: [{\"english\":ENGLISH_SENTENCE,\"chinese\":CANTONESE_TRANSLATION}].Only respond with the json structure.","A1",result=>{
                 let baba = result;                
                 let gdb = window.gamedatabase;   
                 if (gdb !== undefined ) {

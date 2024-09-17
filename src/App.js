@@ -23,7 +23,6 @@ import EditDictionary from './components/EditDictionary';
 import {time_loop} from './components/timedfunctions'
 import { registerEventListener } from './components/eventsystem/EventMarket';
 import { EventType } from './components/eventsystem/Event';
-import * as serviceWorkerRegistration from './serviceWorkerRegistration';
 
 
 export const UserContext = React.createContext(null);
@@ -31,12 +30,13 @@ export const UserContext = React.createContext(null);
 setInterval(function () {time_loop();}, 1000);
 
 
+
+
 const App = () => {
 
   const [documentStack, setDocumentStack] = useState(new RCDocumentStack());
 
 
-  serviceWorkerRegistration.register();
 
   registerEventListener("gotoreaderonnewcws",
     ev => {
@@ -46,6 +46,75 @@ const App = () => {
       window.location.href = 'reader';
     }
   );
+
+  const messageEventSource = new EventSource('https://chinese.eriktamm.com/api/commandstream');
+  window.mesource = messageEventSource; 
+  messageEventSource.addEventListener('message', (event) => {
+    console.log('   ' + event.data);
+    if (event.data == 'REPEATEVENT') {
+      if (window.repeatEvent != undefined && window.repeatEvent != null) {
+        window.repeatEvent();
+      } 
+    }
+
+    if (event.data == 'ENGLISHEVENT') {
+      if (window.englishEvent != undefined && window.englishEvent != null) {
+        window.englishEvent();
+      } 
+    }
+
+
+    if (event.data == 'MARKEVENT') {
+      if (window.markEvent != undefined && window.markEvent != null) {
+        window.markEvent();
+      } 
+    }
+
+
+    if (event.data == 'GOEVENT') {
+      if (window.goEvent != undefined && window.goEvent != null) {
+        window.goEvent();
+      } 
+    }
+  });
+ 
+  messageEventSource.addEventListener('open', (event) => {
+    console.log('eventsource is opened   ');
+  });
+ 
+  messageEventSource.addEventListener('error', (event) => {
+    console.log('eventsource is error   ');
+  });
+
+
+  const localmessageEventSource = new EventSource('http://localhost:9123');
+  window.localmesource = localmessageEventSource; 
+  localmessageEventSource.addEventListener('message', (event) => {
+    console.log('   ' + event.data);
+    if (event.data == 'REPEATEVENT') {
+      if (window.repeatEvent != undefined && window.repeatEvent != null) {
+        window.repeatEvent();
+      } 
+    }
+
+    if (event.data == 'ENGLISHEVENT') {
+      if (window.englishEvent != undefined && window.englishEvent != null) {
+        window.englishEvent();
+      } 
+    }
+
+  });
+ 
+  localmessageEventSource.addEventListener('open', (event) => {
+    console.log('eventsource is opened   ');
+  });
+ 
+  localmessageEventSource.addEventListener('error', (event) => {
+    console.log('eventsource is error   ');
+  });
+ 
+
+ 
 
 
   return (

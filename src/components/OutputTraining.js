@@ -4,6 +4,13 @@ import IntelligentText from './IntelligentText';
 
 import {addSentence,removeAudio,addListenedTo,addMP3ToServer,getArticleAudioExample,createexamples,getAudioExample,getTotalOutputTime,getTotalAudioTime, callPoeWithCallback,addAudioTimeToBackend,callPoe,getExampleResult, getexamples,writeExampleResult, addOutputExercise, backEndCall} from "./backendapi/backendcall"
 
+import { addMP3ToCache,playMP3background,playTextInBackground } from './mp3lib';
+
+import { playEnglishTranslationAndroid } from './androidspeech';
+import { playEnglishTranslationChrome } from './chromespeech';
+import { isAndroidWebView,isChromebrowser } from './browserdetect';
+import { playTone } from './soundlib';
+
 
 const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 const mic = new SpeechRecognition();
@@ -12,82 +19,46 @@ const OutputTraining = () => {
 
 
 
-  const [isListening, setIsListening] = useState(false);
-  const [noteText, setNoteText] = useState('');
+  const [currentFile,setCurrentFile] = useState('');
 
 
-    useEffect(() => {
-      handleListen();
-    }, [isListening]);
-
-
-    function countWordInString(word, str) {
-      // Convert both the word and the string to lowercase for case-insensitive matching
-      const lowercaseWord = word.toLowerCase();
-      const lowercaseStr = str.toLowerCase();
-    
-      // Use a regular expression to find all occurrences of the word
-      const matches = lowercaseStr.match(new RegExp(lowercaseWord, 'g'));
-    
-      // If there are no matches, return 0
-      if (!matches) {
-        return 0;
+    const currentSentence=(tokenInSentence)=> {
+      let start = tokenInSentence;
+      let str = '';
+      while ((start > 0) && (tokens[start]!='？'&&tokens[start]!='！'&&tokens[start]!='。'  )) {
+        start--;
       }
-    
-      // Return the length of the matches array, which represents the count of the word
-      return matches.length;
+      let end = tokenInSentence;
+      while ((end < (tokens.length-1)) && (tokens[end]!=='？'&&tokens[end]!=='！'&&tokens[end]!=='。' )) {
+        console.log(tokens[end]);
+        end++;
+      }
+      for (let i = start; i<end;i++) {
+        str = str + tokens[i]
+      }
     }
 
-    const handleListen = () => {
-      if (isListening) {
-        mic.start();
-        mic.onend = () => {
-          console.log('Continue listening...');
-          mic.start();
-        };
-      } else {
-        mic.stop();
-        mic.onend = () => {
-          console.log('Stopped listening per click');
-        };
+    const lookupSentence = () => {
+      let theone = window.chosentoken;
+      console.log(theone);
+      // backtrack
+      let str = currentSentence(theone);
+      callPoeWithCallback(-1,"Explain this sentence,grammar and vocab using English" + ' : ' + str,'Claude-3-Opus','Claude-3-Opus',result=>{
+        let txt = '';
+        let tkns = result[3];
+        // set the text to be spoken
+          for (var i=0;i< tkns.length;i++) {
+            if (tkns[i] == '\n') {
+              txt= txt + '<br/>';
+            } else
+              txt = txt + tkns[i];
+          }
+        window.displayDialog(str,txt);
+      },
+      error=>{
+        console.log(error);
       }
-      mic.onstart = () => {
-        console.log('Microphone is on');
-      };
-  
-      mic.onresult = (event) => {
-        const transcript = Array.from(event.results)
-          .map((result) => result[0])
-          .map((result) => result.transcript)
-          .join('');
-
-        for(var i=0; i < countWordInString('repeat',transcript);i++)  {
-          console.log(transcript);        
-          goBack(5);
-        }
-
-        for(var i=0; i < countWordInString('stop',transcript);i++)  {
-          console.log(transcript);        
-          audioRef.current.pause();
-        }
-
-
-        for(var i=0; i < countWordInString('start',transcript);i++)  {
-          console.log(transcript);        
-          audioRef.current.play();
-        }
-
-
-        //setNoteText(transcript);
-        mic.onerror = (event) => {
-          console.log(event.error);
-        };
-      };
-    };
-  
-  
-    const toggleRecording = () => {
-      setIsListening((prevState) => !prevState);
+      );
     };
     
 
@@ -95,6 +66,8 @@ const OutputTraining = () => {
     const [question,setQuestion] = useState('This is the sentence');
     const [chinese,setChinese] = useState('This is the chinese');
     const [tokens,setTokens] = useState([]);
+    const [extendedTokens,setExtendedTokens] = useState(null);
+    
     const [times,setTimes] = useState(null);
     const [pickedQuestionId,setPickedQuestionId] = useState(-1);
     const [chosenLevel,setChosenLevel] = useState('');
@@ -103,7 +76,6 @@ const OutputTraining = () => {
     const intelligentTextRef = useRef(null);
     const correctedEnglish = useRef(null);
     const addStuffArea = useRef(null);
-    const readmode = useState(false);
     
 
     const audioRef = useRef(null);
@@ -113,6 +85,43 @@ const OutputTraining = () => {
       setPlaybackRate(speed);
       audioRef.current.playbackRate = speed;
     };
+
+    /** Control commands exposed on window */
+
+    window.repeatEvent = () => {
+      console.log('repeatEvent');
+      goBack(5);  
+    }
+
+    window.englishEvent = () => {
+      console.log('englishEvent');
+      englishVersion();
+    }
+
+    window.startEvent = () => {
+      console.log('startEvent');
+      audioRef.current.play();
+    }
+
+    window.pauseEvent = () => {
+      console.log('pauseEvent');
+      audioRef.current.pause();
+    }
+
+    window.refEvent = () => {
+      console.log('refEvent');
+      getRandomAudioExample();
+    }
+  
+    window.markEvent = () => {
+      console.log('markEvent');
+      setMark(null);
+    }
+
+    window.goEvent = () => {
+      console.log('goEvent');
+      goMark(null);
+    }
     
     const pickRound = (newRound) => {
         let baloba = pickedQuestionId + 1;
@@ -131,51 +140,6 @@ const OutputTraining = () => {
         }
         window.clearChinese = clearChinese;
     }
-
-    const oneLoopSoundEnglish =() => {
-      const message = new SpeechSynthesisUtterance();
-      let txt = window.gamedatabase[window.soundId].english;
-      // set the text to be spoken
-      message.text = txt;
-      message.lang = 'en-us';
-      // create an instance of the speech synthesis object
-      const speechSynthesis = window.speechSynthesis;
-      // start speaking
-      message.onend = (ev)=> {
-        // pause for 5 seconds
-        setTimeout(()=> {          
-          window.soundId = window.soundId + 1;
-          if ( window.soundId >= window.gamedatabase.length)
-            window.soundId = 0;
-          oneLoopSound();
-        },4000);
-      };
-      speechSynthesis.speak(message);
-
-    }
-
-    const oneLoopSound=() => {
-      const message = new SpeechSynthesisUtterance();
-      let txt = '';
-      let mytokens = window.gamedatabase[window.soundId].tokens;
-      // set the text to be spoken
-      for (var i=0;i< mytokens.length;i++) {
-        txt = txt + mytokens[i];
-      }
-      message.text = txt;
-      message.lang = 'zh-HK';
-      // create an instance of the speech synthesis object
-      const speechSynthesis = window.speechSynthesis;
-      // start speaking
-      message.onend = (ev)=> {
-        // pause for 5 seconds
-        setTimeout(()=> {                    
-          oneLoopSoundEnglish();
-        },4000);
-      };
-      speechSynthesis.speak(message);
-    }
-
 
     const addSentence = () => {
       let selection = window.getSelection().toString();
@@ -200,7 +164,31 @@ const OutputTraining = () => {
       );
     }
 
-     const  threeExamples = async () => {
+
+    const translatePage = () => {
+      let alltext = document.getElementById('iqtextid').innerText;
+      callPoeWithCallback(-1,"Translate this text to English  : " + alltext,'Claude-3-Opus','Claude-3-Opus',result=>{
+        console.log(result);
+        console.log(intelligentTextRef);  
+
+        let txt = '';
+        let tkns = result[3];
+        // set the text to be spoken
+          for (var i=0;i< tkns.length;i++) {
+            if (tkns[i] == '\n') {
+              txt= txt + '<br/>';
+            } else
+              txt = txt + tkns[i];
+          }   
+        window.displayDialog("Whole page",txt);
+      },
+      error=>{
+        console.log(error);
+      }
+      );
+    }
+    
+    const  threeExamples = async () => {
       const clipboardText = await navigator.clipboard.readText();
       let tmpquestion = 'Create 3 sentences in B1 level Cantonese containing this chunk: ' + clipboardText + ". Return these together with english translation in json format like this: [{\"english\":ENGLISH_SENTENCE,\"chinese\":CANTONESE_TRANSLATION}].Only respond with the json structure."
       createexamples(tmpquestion,'A1', result => {
@@ -215,24 +203,20 @@ const OutputTraining = () => {
       });
     }
 
-    const create = () => {
+    const createSentences = () => {
       //let mytokens = window.gamedatabase[pickedQuestionId].tokens;
       let mytokens = tokens;
       // set the text to be spoken
-      let txt = '';
-      
+      let txt = '';      
       for (var i=0;i< mytokens.length;i++) {
         txt = txt + mytokens[i];
       }
       let tmpquestion = '';
-
       if ( document.getElementById('createFormat').value.indexOf('[SELECTED]') == -1 ) {
-
         let selection = window.getSelection().toString();
         if (selection.length > 0) {
           txt = selection;        
         }
-  
         tmpquestion = document.getElementById('createFormat').value + ' : ' + txt + ". Return these together with english translation in json format like this: [{\"english\":ENGLISH_SENTENCE,\"chinese\":CANTONESE_TRANSLATION}].Only respond with the json structure."
       }
       else {
@@ -241,11 +225,9 @@ const OutputTraining = () => {
           selectedText = correctedEnglish.current.value;
         }
         tmpquestion = document.getElementById('createFormat').value.replace('[SELECTED]',selectedText) +". Return these together with english translation in json format like this: [{\"english\":ENGLISH_SENTENCE,\"chinese\":CANTONESE_TRANSLATION}].Only respond with the json structure."
-        console.log(tmpquestion);
         }
         createexamples(tmpquestion,'A1', result => {
         let baba = result;
-        console.log(baba);
         let gdb = window.gamedatabase;   
         for(var i =0 ; i < baba.length;i++) {
             addOutputExercise(baba[i]['english'], JSON.stringify( baba[i]['chinese']),chosenLevel,2,1,0,Date.now(), result => {});
@@ -255,11 +237,6 @@ const OutputTraining = () => {
         changeState('showquestion');
     }
     );
-    }
-
-    const startSpeakingRound = () => {
-      window.soundId = 0;
-      oneLoopSound();
     }
 
     const startRound = ()=> {
@@ -297,7 +274,6 @@ const OutputTraining = () => {
       }
     }
 
-
     const addMP3 = (event) => {
       console.log(event);
       addMP3ToServer(addStuffArea.current.value);    
@@ -319,12 +295,10 @@ const OutputTraining = () => {
         changeState('showquestion')
     }
 
-
     const kill = ()=> {
       pickRound(false);
       changeState('showquestion')
     }
-
 
     const failure = ()=> {
       let amountTime =  Date.now() - window.questionStart;
@@ -380,12 +354,8 @@ const OutputTraining = () => {
       if (selection.length > 0) {
         txt = selection;        
       }
-
       let bot = document.getElementById('bot').value;      
       callPoeWithCallback(-1,document.getElementById('explainFormat').value + ' : ' + txt,bot,window.changeBot,result=>{
-        console.log(result);
-        console.log(intelligentTextRef);  
-
         let txt = '';
         let tkns = result[3];
         // set the text to be spoken
@@ -441,14 +411,6 @@ const OutputTraining = () => {
   };
 
 
-
-  const addAudioTime = time => {    
-      addAudioTimeToBackend(time,(totalTime)=> {
-        window.totalAudioTime = totalTime;
-      });
-  }
-
-
   const  showMP3 = (event) => {
     backEndCall('getspokenarticles',{},
     result => {
@@ -465,29 +427,40 @@ const OutputTraining = () => {
     result => {
       window.currentSentences = result['tokens'];
       setTokens(result['tokens']);
+      setExtendedTokens(result['extendedtokens']);
       audioRef.current.src = 'mp3/' +result['filepath'];
       setState('statistics');
     });
   }
 
   const getRandomAudioExample = () => {
+    window.currentSentences = null;
+    window.lastLastSentenceStartAt = 0;
+    window.lastSentenceStartTime = 0;
     getAudioExample(result=> {    
-      console.log(result['filepath']);
       window.currentSentences = result['tokens'];
       setTokens(result['tokens']);
       audioRef.current.src = 'mp3/' +result['filepath'];
+      setCurrentFile(result['filepath']);
       audioRef.current.play();
-      setTimes()
+      console.log(result['times']);
       if (result['times'] != null) {
+        for (var i=0;i < result['times'].length;i++) {
+          let english = result['times'][i][1];
+          addMP3ToCache(english);
+        }
         setTimes(result['times']);
       } else {
         setTimes(null);
       }
     })
-
   }
+
   const refreshAudio =  (event) => {
+    
     window.refreshAudioClicked = true;
+    window.ignoreEnglish = true;
+
     //addListenedToFromAudio();
     getRandomAudioExample();
     //addKeyHandler
@@ -524,21 +497,6 @@ const OutputTraining = () => {
         audioRef.current.pause();
       }
     }
-
-    /*
-
-
-    if (key =='r') {
-      goBack(5);
-    }
-    if (key =='e') {
-      englishVersion();
-    }
-
-    if (key =='s') {
-      readStatistics();
-    }
-    */
   }
 
   const readStatistics = () => {
@@ -560,6 +518,15 @@ const OutputTraining = () => {
     });
   }
 
+  window.repeatEvent = ()=> {
+    goBack(5);
+  }
+
+  window.englishEvent = ()=> {
+    console.log('englishEvent');
+    englishVersion();
+  }
+
 
   const setMark = (event) => {
     window.playMark = window.currentPlayTime;
@@ -571,6 +538,7 @@ const OutputTraining = () => {
 
   const onAudioEnded = (event) => {
 
+    audioRef.current.pause();
     if ( document.getElementById('loopCheckbox').checked) {
       setTimeout(()=> {
           audioRef.current.play();
@@ -586,6 +554,7 @@ const OutputTraining = () => {
     }
 
     if ( document.getElementById('nextCheckbox').checked) {
+
       const path = audioRef.current.src.split('/').pop();
       // Remove any query parameters
       let file =  path.split('?')[0];
@@ -595,6 +564,7 @@ const OutputTraining = () => {
       result => {   
         window.currentSentences = result['tokens'];
         setTokens(result['tokens']);  
+        setExtendedTokens(result['extendedtokens'])
         audioRef.current.src = 'mp3/' +result['filepath'];
         setState('statistics');
         setTimeout(() => {
@@ -606,17 +576,14 @@ const OutputTraining = () => {
 
 
   const englishVersion = () => {
-    playEnglishTranslation( window.lastSentence,
-      () => {
-        audioRef.current.pause();
-      },
-      () => {
-        audioRef.current.currentTime = window.lastSentenceStartTime;
-        audioRef.current.play();
-      }
-    )
+    if (window.ignoreEnglish)
+      playTone(440,0.1,0.1);
+    else
+      playTone(660,0.1,0.1);
+    window.ignoreEnglish = !window.ignoreEnglish;
+    audioRef.current.currentTime = window.lastSentenceStartTime;
+    audioRef.current.play();
   }
-
 
   const playEnglishTranslation = (text,onStart,onEnd) => {
     const utterance = new SpeechSynthesisUtterance(text);
@@ -640,23 +607,52 @@ const OutputTraining = () => {
       let duration = times[i][3];
       if (timepoint > startAt && timepoint < (startAt+duration)) {
         window.lastSentence = times[i][1];
+        window.lastTokens = times[i][0];
         window.lastSentenceStartTime = times[i][2];
+        window.lastEnglishStartsAt = window.lastSentenceStartTime + (duration - times[i][4])
+        window.nextSentenceStartAt = startAt+duration;
       }
-    }
+    } 
+  }
+
+  const calculateTokenFromTime = (currentTime,totalTime) => {
+    let chosentoken =  Math.round(tokens.length*(currentTime / totalTime));
+    let found = -1;
+    if (extendedTokens != null) {
+      for (var i=0; i <extendedTokens.length;i++) {
+        let d = extendedTokens[i];
+        let start_time = d['start_time'];
+        let end_time = d['end_time'];
+        //console.log( ' ' + currentTime + "   " + start_time  + '  ' + end_time)        
+        if (currentTime >= start_time && currentTime <= end_time) {
+          found = i;
+          break
+        }
+      }
+    }    
+    if ( found != -1)
+      return found;
+    return chosentoken;
   }
 
   const handleTimeUpdate = (event) => {
     let now = Date.now();
 
-    if (document.getElementById('iqtextid') != null ) 
-      document.getElementById('iqtextid').focus();
     window.currentPlayTime  = event.target.currentTime;
-    findLineFromTime(window.currentPlayTime);
-    let timePassed = now - window.lastTime;
-    //console.log(' cur ' + event.target.currentTime + ' ' + event.target.duration + ' ' +(event.target.currentTime / event.target.duration));
-    //console.log(' tokens  ' + tokens.length);
-    let chosentoken =  Math.round(tokens.length*(event.target.currentTime / event.target.duration));
     
+    let lastLastSentenceStartAt =  window.lastEnglishStartsAt;    
+    findLineFromTime(window.currentPlayTime);
+    if (lastLastSentenceStartAt != window.lastEnglishStartsAt) {
+      // we have switched sentence!
+      // reset english flag
+      //window.ignoreEnglish = true;
+    }
+
+    let timePassed = now - window.lastTime;
+
+    let chosentoken =  calculateTokenFromTime(event.target.currentTime,event.target.duration);    
+    window.chosentoken = chosentoken;
+
     if (document.getElementById('tokenid' +chosentoken ) != undefined) {
       document.getElementById('tokenid' +chosentoken ).style.backgroundColor = 'grey';
     }
@@ -665,8 +661,16 @@ const OutputTraining = () => {
       document.getElementById('tokenid' +(chosentoken-1) ).style.backgroundColor = 'white';
     }
 
+    //Lets check if we are speaking english
+    console.log(window.lastEnglishStartsAt);
+    console.log(window.currentPlayTime);
 
-    if (timePassed < 50000) {
+    if ((window.currentPlayTime > window.lastEnglishStartsAt )&& window.ignoreEnglish) {
+      audioRef.current.currentTime = window.nextSentenceStartAt;
+    }
+
+
+    if (timePassed < 60000) {
         window.combinedTime += timePassed;
         if (window.combinedTime > 10000) {
           //console.log('adding time');
@@ -700,20 +704,21 @@ const OutputTraining = () => {
   audioRef.current.currentTime = audioRef.current.currentTime - (amount);
  };
 
-  return (
-    
-    <container>
-    <Navigation></Navigation>
 
+
+  return (
+        <container>
+    <Navigation>hi there {state}</Navigation>
     <div>
-      <h1>State Component</h1>
       <div>
-        <button onClick={() => changeState('inputlevel')}>inputlevel</button>
+        <br></br>
+        <br></br>
+        <br></br>        
+        <button onClick={() => changeState('inputlevel')}>Inputlevel</button>
         <button onClick={() => changeState('showquestion')}>showquestion</button>
-        <button onClick={() => changeState('showanswer')}>howanswer</button>
-        <button onClick={() => changeState('addstuff')}>add stuff</button>
+        <button onClick={() => changeState('showanswer')}>sa</button>
         <button onClick={() => showMP3()}>mp3</button>        
-        <button onClick={() => showStatistics()}>statistics</button>        
+        <button onClick={() => showStatistics()}>stat</button>        
       </div>
       <div>
         {state === 'inputlevel' && (
@@ -750,6 +755,7 @@ const OutputTraining = () => {
                 />
                 Read
               </label>
+              <p>{audioRef.current==null?"none":audioRef.current.src}</p>
               <IntelligentText tokens={tokens} keyhandler={mykeyhandler}></IntelligentText> 
                 </div>
                 <div class="form-group">                
@@ -766,8 +772,7 @@ const OutputTraining = () => {
         )}
         {state === 'showquestion' && (
           <div>
-            <h2>Question  {chosenLevel} {pickedQuestionId} {window.gamedatabase.length} </h2>
-            
+            <h2>Question  {chosenLevel} {pickedQuestionId} {window.gamedatabase.length} </h2>            
             <div class="form-group">
             {isReadMode ? 
             <p style={{fontSize:22}}>{window.clearChinese}</p>
@@ -789,6 +794,7 @@ const OutputTraining = () => {
           </div>
           <div class="form-group">                        
           <input type="text" size={50} ref={correctedEnglish}></input>
+          <p>{audioRef.current==null?"none":audioRef.current.src}</p>
           <IntelligentText tokens={tokens} keyhandler={mykeyhandler} ></IntelligentText>
           <button onClick={freeai}>FreeAi</button><br></br>
           <select id="explainFormat">
@@ -808,12 +814,12 @@ const OutputTraining = () => {
             <option>Claude-3-Sonnet</option>
               </select><button onClick={explain}>Explain</button> <br></br>
               <select id="createFormat">
-            <option>Create 3 sentences in A1 level Cantonese containing this chunk: [SELECTED]</option> 
-            <option>Create 3 sentences in A1 level Cantonese using the same patterns as in this</option>
-            <option>Create 3 sentences in A1 level Cantonese using keywords from this</option>
-            <option>Create 3 sentences in A1 level Cantonese following the using expressions from this</option>
+            <option>Create 3 sentences in B1 level Cantonese containing this chunk: [SELECTED]</option> 
+            <option>Create 3 sentences in B1 level Cantonese using the same patterns as in this</option>
+            <option>Create 3 sentences in B1 level Cantonese using keywords from this</option>
+            <option>Create 3 sentences in B1 level Cantonese following the using expressions from this</option>
             <option>Split this text up into sentences: </option>
-            </select><button onClick={create}>Create</button>
+            </select><button onClick={createSentences}>Create</button>
           </div>
           <button id = {"successButtonId"} onClick={success}>Success</button><br>
           </br>
@@ -841,6 +847,8 @@ const OutputTraining = () => {
           <div>
             <h2>Statistics 3 Content {chosenLevel}</h2>
             <p>Total time: {totalTimeString}</p>
+            <p>{audioRef.current==null?"none":audioRef.current.src}</p>
+          
             <IntelligentText tokens={tokens} keyhandler={mykeyhandler} ></IntelligentText>
  
           </div>
@@ -851,13 +859,11 @@ const OutputTraining = () => {
             <h2>mp3 files</h2>
            { window.mp3files.map( (value,index,array) =>
                     {
-                      window.refreshAudioClicked = false;
-                            return (<span><a onClick={pickAMP3}>{value}</a><br></br></span>)
+                            return (<span><a onClick={pickAMP3}>{value}</a><a onClick={()=> { removeAudio(value)}}>kill</a><br></br></span>)
                       }) 
             }
           </div>
-        )}        
-
+        )}
       </div>
       <br></br>
       <div
@@ -872,25 +878,24 @@ const OutputTraining = () => {
             }}
       >
       
-      <audio controls onTimeUpdate={handleTimeUpdate} onEnded={onAudioEnded} onPlay={handleStartPlay} ref={audioRef}>
+      <audio controls onTimeUpdate={handleTimeUpdate} onEnded={onAudioEnded} onPlay={handleStartPlay} ref={audioRef} muted={true}>
       <source src={"https://chinese.eriktamm.com/api/audioexample?dd=" + Date.now() } type="audio/mp3"/>
       </audio>
       l<input type="checkbox"  id="loopCheckbox"></input>
-      n<input type="checkbox" id="nextCheckbox"></input>
-      <button onClick={() => addSentence()}>add</button>
-      <button onClick={() => threeExamples()}>3</button>                
+      n<input type="checkbox" id="nextCheckbox" checked></input>
       <br></br>
-      <button onClick={toggleRecording}>
-        {isListening ? 'oR' : 'aR'}
-        </button>
+      <button onClick={() => addSentence()}>add</button>
+      <button onClick={() => threeExamples()}>3</button>   
+      <button onClick={() => translatePage()}>Tran</button>   
+      <button onClick={lookupSentence}>se?</button>
         <button onClick={() => handleSpeedChange(0.5)}>0.5x</button>
         <button onClick={() => handleSpeedChange(1)}>1x</button>
         <button onClick={() => refreshAudio()}>Ref</button>
+        <br></br>
         <button onClick={() => setMark()}>M</button>
         <button onClick={() => goMark()}>G</button>
         <button onClick={() => goBack(5)}>{"<<<"}</button>
-        <button onClick={() =>  englishVersion()  }>{"eng"}</button>
-        
+        <button onClick={() => englishVersion()}>{"eng"}</button>        
         <button onClick={() => startManualTime()}>M sta</button>
         <button onClick={() => stopManualTime()}>M sto</button>
         <button onClick={() => {
@@ -901,12 +906,9 @@ const OutputTraining = () => {
             removeAudio(file);
         }
         }>KILL</button><br></br>
-    
-              <div>
-          
+              <div>          
       </div>
-      </div>      
-      <p>Current Playback Speed: {playbackRate}x</p>
+      </div>
     </div>
     </container>
   );
