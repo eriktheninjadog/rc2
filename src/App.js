@@ -47,59 +47,38 @@ const App = () => {
     }
   );
 
-  const messageEventSource = new EventSource('https://chinese.eriktamm.com/api/commandstream');
-  window.mesource = messageEventSource; 
-  messageEventSource.addEventListener('message', (event) => {
+  const localmessageEventSource = new EventSource('http://localhost:9123');
+  window.localmesource = localmessageEventSource; 
+  localmessageEventSource.addEventListener('message', (event) => {
     console.log('   ' + event.data);
-    if (event.data == 'REPEATEVENT') {
+    alert( event.data);
+    if (event.data == 'repeat') {
       if (window.repeatEvent != undefined && window.repeatEvent != null) {
         window.repeatEvent();
       } 
     }
 
-    if (event.data == 'ENGLISHEVENT') {
+    if (event.data == 'english') {
       if (window.englishEvent != undefined && window.englishEvent != null) {
         window.englishEvent();
       } 
     }
 
+    if (event.data == 'start') {
+      if (window.startEvent != undefined && window.startEvent != null) {
+        window.startEvent();
+      } 
+    }
 
-    if (event.data == 'MARKEVENT') {
+    if (event.data == 'mark') {
       if (window.markEvent != undefined && window.markEvent != null) {
         window.markEvent();
       } 
     }
 
-
-    if (event.data == 'GOEVENT') {
+    if (event.data == 'go') {
       if (window.goEvent != undefined && window.goEvent != null) {
         window.goEvent();
-      } 
-    }
-  });
- 
-  messageEventSource.addEventListener('open', (event) => {
-    console.log('eventsource is opened   ');
-  });
- 
-  messageEventSource.addEventListener('error', (event) => {
-    console.log('eventsource is error   ');
-  });
-
-
-  const localmessageEventSource = new EventSource('http://localhost:9123');
-  window.localmesource = localmessageEventSource; 
-  localmessageEventSource.addEventListener('message', (event) => {
-    console.log('   ' + event.data);
-    if (event.data == 'REPEATEVENT') {
-      if (window.repeatEvent != undefined && window.repeatEvent != null) {
-        window.repeatEvent();
-      } 
-    }
-
-    if (event.data == 'ENGLISHEVENT') {
-      if (window.englishEvent != undefined && window.englishEvent != null) {
-        window.englishEvent();
       } 
     }
 
@@ -113,10 +92,6 @@ const App = () => {
     console.log('eventsource is error   ');
   });
  
-
- 
-
-
   return (
     <RecoilRoot>
     <BrowserRouter>

@@ -5,7 +5,7 @@
 
 import React, { startTransition, useState } from 'react';
 
-import { callPoeWithCallback, backEndCall,addTextToBackground,callPoe,testUnderstandingBackend, testVocabBackend, getnewsBackend,grammarBackend, getMemoryDevice,updateCws,getCharacterCWS, directAIQuestionsBackend   ,classify,lookuphistory,addlookup,createWordList,fakeWiki,extensibleApplyAI,extensibleSimplify,retrieveValueFromServer,storeValueOnServer,directAIQuestionBackend, explainParagraph,getTestQuestion, amazonTranslateFromChinese, dictionaryLookup,directAIAnalyze,directAIAnalyzeGrammar,directAISummarize,directAISimplify,localLookup, addQuestions, lookUpPosition } from "./backendapi/backendcall";
+import { callPoeWithCallback, backEndCall,addlookup,createWordList, amazonTranslateFromChinese, dictionaryLookup,addOutputExercise } from "./backendapi/backendcall";
 
 
 import { Row,Col,Button,Container } from "react-bootstrap";
@@ -23,7 +23,6 @@ let cleanmodalheading = '';
 
 const makemodalheading = word => {
     let ret = '';
-
     for(var i =0;i<word.length;i++) {
         ret = ret + "<a href=\"javascript:window.lookupChar('" + word[i] + "');\">" + word[i] +'</a>'
     }
@@ -156,9 +155,127 @@ const IntelligentText = (props)=> {
           
     }
 
+    const addSentenceFromDialog =() => {
+        let english = window.getSelection().toString();
+        let chinese = modalheading;
+        addOutputExercise(english,[chinese],'B1',2,1,0,Date.now(), result => {});
+    }
+
+
+    function extractEnspeak(text) {
+        const regex = /<enspeak>([\s\S]*?)<\/enspeak>/g;
+        const matches = [];
+        let match;
+      
+        while ((match = regex.exec(text)) !== null) {
+          matches.push(match[1]);
+        }
+      
+        return matches;
+      }
+
+
+      function removeTags(text) {
+        
+        return new Promise((resolve, reject) => {
+          try {
+            // Regular expression to match any tag
+            const tagRegex = /<[^>]+>/g;
+            
+            // Replace all tags with an empty string
+            const result = text.replace(tagRegex, '');
+            
+            // Resolve the promise with the result
+            resolve(result);
+          } catch (error) {
+            // If any error occurs, reject the promise
+            reject(error);
+          }
+        });
+      }
+      /*
+    function removeTags(text) {
+        // Regular expression to match any tag
+        const tagRegex = /<[^>]+>/g;
+        
+        // Replace all tags with an empty string
+        return text.replace(tagRegex, '');
+      }
+    */
+
+    function extractEnglishTranslation(text) {
+
+        if (text.indexOf('</enspeak>')!=-1) {
+            text = text.substring(text.indexOf(':') );
+            let str = extractEnspeak(text);
+            let bridx = str.indexOf('<br/>');
+            if (bridx != -1) {
+                str = str.substring(bridx)+4;
+            }
+            //let newstr = removeTags(str);
+            return str;
+        }
+        // Split the text into lines
+        const lines = text.split('\n');
+        
+        // Find the starting index
+        let startIndex = lines.findIndex(line => line.trim() === "English translation:");
+
+        if (startIndex === -1) {
+            startIndex = lines.findIndex(line => line.trim() === "Translation:");
+        }
+        
+        
+        if (startIndex === -1) {
+          return ""; // "English translation:" not found
+        }
+        
+        let extractedLines = [];
+        let emptyLineCount = 0;
+        
+        // Start from the line after "English translation:"
+        for (let i = startIndex + 2; i < lines.length; i++) {
+          const line = lines[i].trim();
+          if (line === "") {
+            emptyLineCount++;
+            if (emptyLineCount === 4) {
+              break; // Stop if we've encountered two consecutive empty lines
+            }
+          } else {
+            emptyLineCount = 0; // Reset count if we encounter a non-empty line
+            extractedLines.push(line);
+          }
+        }
+        
+        return extractedLines.join('\n');
+      }
+      
+
+    function speakEnglish(text) {
+        // Check for support
+        if ('speechSynthesis' in window) {
+          // Create utterance
+          let utterance = new SpeechSynthesisUtterance();
+          
+          // Set text and language (optional)
+          utterance.text = text;
+          utterance.lang = 'en-US'; // Change this for other languages
+          
+          // Speak
+          window.speechSynthesis.speak(utterance);
+        } else {
+          console.log('Text-to-speech not supported.');
+        }
+      }
+      
+      // Usage
+ 
     const displayDialog = (headline,content) => {
-        setmodalcontent(content)
+        setmodalcontent(content);        
         modalheading = headline;
+        let sayit = extractEnglishTranslation(content);
+        if (sayit !== "")
+            speakEnglish(sayit);
         setShow(true);
       };
 
@@ -239,7 +356,7 @@ const IntelligentText = (props)=> {
             <Modal.Footer>
             <Button variant="secondary" onClick={handleClose}>Close </Button>
             <a href={"/editdictionary?term="+modalheading}>edit</a>
-            <Button variant="secondary" onClick={()=>{checkCharacterDetails(cleanmodalheading);}}>Details </Button>
+            <Button variant="secondary" onClick={()=>{addSentenceFromDialog();}}>Add Sent </Button>
             <Button variant="secondary" onClick={()=>{
                 let exampleChunk = modalheading;
                 const selection = window.getSelection();
@@ -258,8 +375,7 @@ const IntelligentText = (props)=> {
                 }
 
             }); }}>CExample </Button>
-            <Button variant="secondary" onClick={()=>{addToExamplesFromDialog(modalheading,modalcontent)}}>addit</Button>
-            
+            <Button variant="secondary" onClick={()=>{addToExamplesFromDialog(modalheading,modalcontent)}}>addit</Button>            
             </Modal.Footer>
             </Modal>
             </div>

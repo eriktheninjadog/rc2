@@ -36,6 +36,7 @@ const OutputTraining = () => {
       for (let i = start; i<end;i++) {
         str = str + tokens[i]
       }
+      return str;
     }
 
     const lookupSentence = () => {
@@ -43,7 +44,9 @@ const OutputTraining = () => {
       console.log(theone);
       // backtrack
       let str = currentSentence(theone);
-      callPoeWithCallback(-1,"Explain this sentence,grammar and vocab using English" + ' : ' + str,'Claude-3-Opus','Claude-3-Opus',result=>{
+      if (str == undefined)
+        return;
+      callPoeWithCallback(-1,"Explain this sentence,grammar and vocab using English. Include English translation between <enspeak>" + ' : ' + str,'Claude-3-Opus','Claude-3-Opus',result=>{
         let txt = '';
         let tkns = result[3];
         // set the text to be spoken
@@ -187,7 +190,7 @@ const OutputTraining = () => {
       }
       );
     }
-    
+
     const  threeExamples = async () => {
       const clipboardText = await navigator.clipboard.readText();
       let tmpquestion = 'Create 3 sentences in B1 level Cantonese containing this chunk: ' + clipboardText + ". Return these together with english translation in json format like this: [{\"english\":ENGLISH_SENTENCE,\"chinese\":CANTONESE_TRANSLATION}].Only respond with the json structure."
@@ -499,24 +502,6 @@ const OutputTraining = () => {
     }
   }
 
-  const readStatistics = () => {
-
-    getTotalOutputTime( total => {
-      getTotalAudioTime( totalaudiotime => {
-
-        playEnglishTranslation( formatTime(total[0]/1000) +' ' + formatTime(total[1]/1000)  + ' Audio:'+ formatTime(totalaudiotime[0]/1000) +' ' + formatTime(totalaudiotime[1]/1000)
-        ,
-          () => {
-            audioRef.current.pause();
-          },
-          () => {
-            audioRef.current.currentTime = window.lastSentenceStartTime;
-            audioRef.current.play();
-          }
-        )
-      });
-    });
-  }
 
   window.repeatEvent = ()=> {
     goBack(5);
@@ -533,7 +518,11 @@ const OutputTraining = () => {
   }
 
   const goMark = (event) => {
-    audioRef.current.currentTime = window.playMark;
+    if (window.repeatMark == undefined || window.repeatMark == null ) {
+      window.repeatMark = audioRef.current.currentTime;
+    } else {
+      window.repeatMark = null;
+    }
   }
 
   const onAudioEnded = (event) => {
@@ -639,6 +628,12 @@ const OutputTraining = () => {
     let now = Date.now();
 
     window.currentPlayTime  = event.target.currentTime;
+
+    if (window.repeatMark != undefined && window.repeatMark != null) {
+      if (window.repeatMark < event.target.currentTime) {
+        event.target.currentTime = window.playMark;
+      }
+    }
     
     let lastLastSentenceStartAt =  window.lastEnglishStartsAt;    
     findLineFromTime(window.currentPlayTime);
