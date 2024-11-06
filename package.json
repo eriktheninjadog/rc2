@@ -8,6 +8,8 @@
     "@testing-library/jest-dom": "^5.16.5",
     "@testing-library/react": "^13.4.0",
     "@testing-library/user-event": "^13.5.0",
+    "@videojs/http-streaming": "^3.13.3",
+    "@videojs/themes": "^1.0.1",
     "axios": "^1.4.0",
     "bootstrap": "^5.2.3",
     "json-loader": "^0.5.7",
@@ -26,6 +28,7 @@
     "react-tiny-fab": "^4.0.4",
     "reactstrap": "^9.1.10",
     "recoil": "^0.7.7",
+    "video.js": "^8.17.4",
     "web-vitals": "^2.1.4"
   },
   "scripts": {
@@ -51,5 +54,8 @@
       "last 1 firefox version",
       "last 1 safari version"
     ]
+  },
+  "devDependencies": {
+    "@types/video.js": "^7.3.58"
   }
 }

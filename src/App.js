@@ -51,7 +51,6 @@ const App = () => {
   window.localmesource = localmessageEventSource; 
   localmessageEventSource.addEventListener('message', (event) => {
     console.log('   ' + event.data);
-    alert( event.data);
     if (event.data == 'repeat') {
       if (window.repeatEvent != undefined && window.repeatEvent != null) {
         window.repeatEvent();
@@ -79,6 +78,12 @@ const App = () => {
     if (event.data == 'go') {
       if (window.goEvent != undefined && window.goEvent != null) {
         window.goEvent();
+      } 
+    }
+
+    if (event.data == 'lookupsentence') {
+      if (window.lookupSentenceEvent != undefined && window.lookupSentenceEvent != null) {
+        window.lookupSentenceEvent();
       } 
     }
 

@@ -250,32 +250,59 @@ const IntelligentText = (props)=> {
         return extractedLines.join('\n');
       }
       
-
-    function speakEnglish(text) {
-        // Check for support
+      function speakEnglish(text, callback) {
         if ('speechSynthesis' in window) {
-          // Create utterance
           let utterance = new SpeechSynthesisUtterance();
           
-          // Set text and language (optional)
           utterance.text = text;
-          utterance.lang = 'en-US'; // Change this for other languages
+          utterance.lang = 'en-US';
           
-          // Speak
-          window.speechSynthesis.speak(utterance);
+          utterance.onend = function(event) {
+            console.log('Speech finished successfully');
+            if (typeof callback === 'function') {
+              callback();
+            }
+          };
+          
+          utterance.onerror = function(event) {
+            console.error('Speech synthesis error:', event.error);
+            if (typeof callback === 'function') {
+                alert(event.error);
+                callback(event.error);
+            }
+          };
+          
+          try {
+            window.speechSynthesis.speak(utterance);
+          } catch (error) {
+            alert(error);
+            console.error('Error initiating speech:', error);
+            if (typeof callback === 'function') {                
+              callback(error);
+            }
+          }
         } else {
-          console.log('Text-to-speech not supported.');
+          console.error('Text-to-speech not supported in this browser');
+          if (typeof callback === 'function') {
+            alert('Text-to-speech not supported');
+            callback('Text-to-speech not supported');
+          }
         }
-      }
-      
+      } 
       // Usage
  
     const displayDialog = (headline,content) => {
-        setmodalcontent(content);        
+        setmodalcontent(content);
         modalheading = headline;
+        console.log('displayDialog ' + headline + ' ' + content);
         let sayit = extractEnglishTranslation(content);
         if (sayit !== "")
-            speakEnglish(sayit);
+            speakEnglish(sayit,()=> {
+                window.startEvent();
+            } ); else {
+                console.log('no english found in ' + content );
+                window.startEvent();
+            }
         setShow(true);
       };
 

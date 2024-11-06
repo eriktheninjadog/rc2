@@ -30,14 +30,71 @@ const OutputTraining = () => {
       }
       let end = tokenInSentence;
       while ((end < (tokens.length-1)) && (tokens[end]!=='？'&&tokens[end]!=='！'&&tokens[end]!=='。' )) {
-        console.log(tokens[end]);
+        //console.log(tokens[end]);
         end++;
       }
+      
+      if (extendedTokens != null) {
+        window.startSentenceTime = extendedTokens[start].start_time-0.2;
+        window.endSentenceTime = extendedTokens[end].end_time;
+      }
+
       for (let i = start; i<end;i++) {
         str = str + tokens[i]
       }
       return str;
     }
+
+
+    const lookupMark = () => {
+      if (window.playMark == undefined)
+        return;
+      if (window.playMark == null)
+        return;
+      if (window.repeatMark == undefined)
+        return;
+      if (window.repeatMark == null)
+        return;
+      if (extendedTokens == null)
+        return;
+      let startidx = -1;
+      for(var i =0;i<extendedTokens.length;i++) {
+          if (extendedTokens[i]['start_time'] >= window.playMark ) {
+            startidx = i;
+            break;
+          }
+      }
+      let endIdx = -1;
+      for(var i =0;i<extendedTokens.length;i++) {
+          if ( extendedTokens[i]['end_time'] >= window.repeatMark) {
+            endIdx = i;
+            break;
+          }
+      }
+      console.log(' startidx ' + startidx + ' ' + endIdx)
+      let orgtxt = '';
+      for (var i=startidx;i<endIdx;i++) {
+        orgtxt = orgtxt + tokens[i];
+      }
+      callPoeWithCallback(-1,"Explain this sentence,grammar and vocab using English. Include English translation between <enspeak>" + ' : ' + orgtxt,'Claude-3-Opus','Claude-3-Opus',result=>{
+        let txt = '';
+        let tkns = result[3];
+        // set the text to be spoken
+          for (var i=0;i< tkns.length;i++) {
+            if (tkns[i] == '\n') {
+              txt= txt + '<br/>';
+            } else
+              txt = txt + tkns[i];
+          }
+          audioRef.current.pause();
+        window.displayDialog(orgtxt,txt);
+      },
+      error=>{
+        console.log(error);
+      }
+      );
+    }
+
 
     const lookupSentence = () => {
       let theone = window.chosentoken;
@@ -46,6 +103,11 @@ const OutputTraining = () => {
       let str = currentSentence(theone);
       if (str == undefined)
         return;
+      if (window.startSentenceTime != undefined || window.startSentenceTime != null) {
+        window.playMark = window.startSentenceTime;
+        window.repeatMark =  window.endSentenceTime;
+
+      }
       callPoeWithCallback(-1,"Explain this sentence,grammar and vocab using English. Include English translation between <enspeak>" + ' : ' + str,'Claude-3-Opus','Claude-3-Opus',result=>{
         let txt = '';
         let tkns = result[3];
@@ -56,6 +118,7 @@ const OutputTraining = () => {
             } else
               txt = txt + tkns[i];
           }
+          audioRef.current.pause();
         window.displayDialog(str,txt);
       },
       error=>{
@@ -125,7 +188,13 @@ const OutputTraining = () => {
       console.log('goEvent');
       goMark(null);
     }
+
+    window.lookupSentenceEvent = () => {
+      console.log('lookupSentence');
+      lookupSentence();
+    }
     
+
     const pickRound = (newRound) => {
         let baloba = pickedQuestionId + 1;
         if (newRound)
@@ -503,6 +572,10 @@ const OutputTraining = () => {
   }
 
 
+  window.startEvent = ()=> {
+    audioRef.current.play();
+  }
+
   window.repeatEvent = ()=> {
     goBack(5);
   }
@@ -536,7 +609,13 @@ const OutputTraining = () => {
       2000);      
       return;
     }
-
+    if ( document.getElementById('autoKillCheckbox') != undefined && document.getElementById('autoKillCheckbox').checked) {
+        let file = audioRef.current.src;
+        let fileparts = file.split('/');
+        file = fileparts[fileparts.length-1];
+        removeAudio(file,()=>{});
+    }
+    
     if ( window.refreshAudioClicked ) {
       getRandomAudioExample();
       return;
@@ -876,6 +955,7 @@ const OutputTraining = () => {
       <audio controls onTimeUpdate={handleTimeUpdate} onEnded={onAudioEnded} onPlay={handleStartPlay} ref={audioRef} muted={true}>
       <source src={"https://chinese.eriktamm.com/api/audioexample?dd=" + Date.now() } type="audio/mp3"/>
       </audio>
+      ak<input type="checkbox"  id="autoKillCheckbox"></input>
       l<input type="checkbox"  id="loopCheckbox"></input>
       n<input type="checkbox" id="nextCheckbox" checked></input>
       <br></br>
@@ -883,6 +963,7 @@ const OutputTraining = () => {
       <button onClick={() => threeExamples()}>3</button>   
       <button onClick={() => translatePage()}>Tran</button>   
       <button onClick={lookupSentence}>se?</button>
+      <button onClick={lookupMark}>se!</button>
         <button onClick={() => handleSpeedChange(0.5)}>0.5x</button>
         <button onClick={() => handleSpeedChange(1)}>1x</button>
         <button onClick={() => refreshAudio()}>Ref</button>
@@ -897,7 +978,6 @@ const OutputTraining = () => {
             let file = audioRef.current.src;
             let fileparts = file.split('/');
             file = fileparts[fileparts.length-1];
-            alert(file);
             removeAudio(file);
         }
         }>KILL</button><br></br>
