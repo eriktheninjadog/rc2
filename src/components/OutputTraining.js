@@ -262,7 +262,7 @@ const OutputTraining = () => {
 
     const  threeExamples = async () => {
       const clipboardText = await navigator.clipboard.readText();
-      let tmpquestion = 'Create 3 sentences in B1 level Cantonese containing this chunk: ' + clipboardText + ". Return these together with english translation in json format like this: [{\"english\":ENGLISH_SENTENCE,\"chinese\":CANTONESE_TRANSLATION}].Only respond with the json structure."
+      let tmpquestion = 'Create 3 sentences in B2 level Cantonese containing this chunk: ' + clipboardText + ". Return these together with english translation in json format like this: [{\"english\":ENGLISH_SENTENCE,\"chinese\":CANTONESE_TRANSLATION}].Only respond with the json structure."
       createexamples(tmpquestion,'A1', result => {
         let baba = result;
         console.log(baba);
@@ -888,10 +888,10 @@ const OutputTraining = () => {
             <option>Claude-3-Sonnet</option>
               </select><button onClick={explain}>Explain</button> <br></br>
               <select id="createFormat">
-            <option>Create 3 sentences in B1 level Cantonese containing this chunk: [SELECTED]</option> 
-            <option>Create 3 sentences in B1 level Cantonese using the same patterns as in this</option>
-            <option>Create 3 sentences in B1 level Cantonese using keywords from this</option>
-            <option>Create 3 sentences in B1 level Cantonese following the using expressions from this</option>
+            <option>Create 3 sentences in B2 level Cantonese containing this chunk: [SELECTED]</option> 
+            <option>Create 3 sentences in B2 level Cantonese using the same patterns as in this</option>
+            <option>Create 3 sentences in B2 level Cantonese using keywords from this</option>
+            <option>Create 3 sentences in B2 level Cantonese following the using expressions from this</option>
             <option>Split this text up into sentences: </option>
             </select><button onClick={createSentences}>Create</button>
           </div>

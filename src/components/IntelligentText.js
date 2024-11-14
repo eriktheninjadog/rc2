@@ -295,6 +295,7 @@ const IntelligentText = (props)=> {
         setmodalcontent(content);
         modalheading = headline;
         console.log('displayDialog ' + headline + ' ' + content);
+        /*
         let sayit = extractEnglishTranslation(content);
         if (sayit !== "")
             speakEnglish(sayit,()=> {
@@ -303,6 +304,7 @@ const IntelligentText = (props)=> {
                 console.log('no english found in ' + content );
                 window.startEvent();
             }
+                */
         setShow(true);
       };
 
