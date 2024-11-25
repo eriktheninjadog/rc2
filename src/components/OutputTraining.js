@@ -1,6 +1,11 @@
+
+import axios from "axios";
+
+
 import React, { startTransition, useState ,useRef,useEffect} from 'react';
 import Navigation from './Navigation';
 import IntelligentText from './IntelligentText';
+import FloatingButton from "./floatingbutton";
 
 import {addSentence,removeAudio,addListenedTo,addMP3ToServer,getArticleAudioExample,createexamples,getAudioExample,getTotalOutputTime,getTotalAudioTime, callPoeWithCallback,addAudioTimeToBackend,callPoe,getExampleResult, getexamples,writeExampleResult, addOutputExercise, backEndCall} from "./backendapi/backendcall"
 
@@ -211,7 +216,7 @@ const OutputTraining = () => {
           clearChinese = clearChinese + window.gamedatabase[baloba].tokens[i];          
         }
         window.clearChinese = clearChinese;
-    }
+    } 
 
     const addSentence = () => {
       let selection = window.getSelection().toString();
@@ -275,41 +280,51 @@ const OutputTraining = () => {
       });
     }
 
-    const createSentences = () => {
-      //let mytokens = window.gamedatabase[pickedQuestionId].tokens;
+  const createSentences = () => {
+  // Get tokens and convert to text
       let mytokens = tokens;
-      // set the text to be spoken
-      let txt = '';      
-      for (var i=0;i< mytokens.length;i++) {
-        txt = txt + mytokens[i];
-      }
+      let txt = mytokens.join('');
       let tmpquestion = '';
-      if ( document.getElementById('createFormat').value.indexOf('[SELECTED]') == -1 ) {
-        let selection = window.getSelection().toString();
-        if (selection.length > 0) {
-          txt = selection;        
-        }
-        tmpquestion = document.getElementById('createFormat').value + ' : ' + txt + ". Return these together with english translation in json format like this: [{\"english\":ENGLISH_SENTENCE,\"chinese\":CANTONESE_TRANSLATION}].Only respond with the json structure."
-      }
-      else {
-        var selectedText = window.getSelection().toString();
-        if (selectedText.length == 0) {
-          selectedText = correctedEnglish.current.value;
-        }
-        tmpquestion = document.getElementById('createFormat').value.replace('[SELECTED]',selectedText) +". Return these together with english translation in json format like this: [{\"english\":ENGLISH_SENTENCE,\"chinese\":CANTONESE_TRANSLATION}].Only respond with the json structure."
-        }
-        createexamples(tmpquestion,'A1', result => {
-        let baba = result;
-        let gdb = window.gamedatabase;   
-        for(var i =0 ; i < baba.length;i++) {
-            addOutputExercise(baba[i]['english'], JSON.stringify( baba[i]['chinese']),chosenLevel,2,1,0,Date.now(), result => {});
-            gdb.push( {tokens:baba[i]['chinese'],english:baba[i]['english'] }   )
-        }
-        window.gamedatabase = gdb;
-        changeState('showquestion');
-    }
-    );
-    }
+      const selectedText = window.getSelection().toString() || correctedEnglish.current.value;
+      const createFormat = document.getElementById('createFormat').value;
+
+      // Build question based on format
+      if (!createFormat.includes('[SELECTED]')) {
+        // Use selected text if available, otherwise use full text
+        const textToUse = selectedText.length > 0 ? selectedText : txt;
+        tmpquestion = `${createFormat} : ${textToUse}. Return these together with english translation in json format like this: [{"english":ENGLISH_SENTENCE,"chinese":CANTONESE_TRANSLATION}].Only respond with the json structure.`;
+      } else {
+        // Replace [SELECTED] placeholder with selected text
+        tmpquestion = `${createFormat.replace('[SELECTED]', selectedText)}. Return these together with english translation in json format like this: [{"english":ENGLISH_SENTENCE,"chinese":CANTONESE_TRANSLATION}].Only respond with the json structure.`;
+            }
+
+    // Create examples and add to database
+      createexamples(tmpquestion, 'A1', result => {
+        const baba = result;
+        const gdb = window.gamedatabase;
+
+        baba.forEach(example => {
+          // Add each example to exercises
+          addOutputExercise(
+            example.english,
+            JSON.stringify(example.chinese),
+            chosenLevel,
+            2,
+            1,
+            0,
+            Date.now(),
+            result => {}
+        );
+
+      gdb.push({
+        tokens: example.chinese,
+        english: example.english
+      });
+    });
+    window.gamedatabase = gdb;
+    changeState('showquestion');
+  });
+};
 
     const startRound = ()=> {
         console.log('startRound');
@@ -703,6 +718,35 @@ const OutputTraining = () => {
     return chosentoken;
   }
 
+  const loadSubtitle = () => {
+    console.log('loadSubtitle ');
+
+    let subtitle = audioRef.current.src + '.subtitle'
+    console.log( subtitle);
+
+    axios.get(subtitle)
+    .then(function (response) {
+      audioRef.current.subtitle = response.data
+    })
+    .catch(function (error) {
+      alert(error);
+        //errorcallback(error)
+    });
+
+  }
+
+  const updateSubtitles = (currentTime, subtitle) => {
+    if (!subtitle) return '';
+    
+    let txt = '';
+    for (let i = 0; i < subtitle.length; i++) {
+      if (subtitle[i][0] < currentTime) {
+        txt = subtitle[i][1];
+      }
+    }
+    return txt;
+  }
+
   const handleTimeUpdate = (event) => {
     let now = Date.now();
 
@@ -714,12 +758,11 @@ const OutputTraining = () => {
       }
     }
     
-    let lastLastSentenceStartAt =  window.lastEnglishStartsAt;    
-    findLineFromTime(window.currentPlayTime);
-    if (lastLastSentenceStartAt != window.lastEnglishStartsAt) {
-      // we have switched sentence!
-      // reset english flag
-      //window.ignoreEnglish = true;
+   if (audioRef.current.subtitle != undefined) {
+      const txt = updateSubtitles(event.target.currentTime, audioRef.current.subtitle);
+      if (txt.length != tokens.length) {
+        setTokens(txt);
+      }
     }
 
     let timePassed = now - window.lastTime;
@@ -881,14 +924,14 @@ const OutputTraining = () => {
             <option>Rewrite this to Standard Chinese</option>
             <option>Translate this to English</option>
             </select>
-            <select id="bot" onChange={()=>{window.changeBot = true;}}>
+            <select id="bot" onChange={()=>{window.changeBot = true;}}>Create 3 sentences in B2 level Cantonese containing this chunk:
             <option>Claude-3-Opus</option>
             <option>GPT-4</option>
             <option>Claude-3-Haiku</option>
             <option>Claude-3-Sonnet</option>
               </select><button onClick={explain}>Explain</button> <br></br>
               <select id="createFormat">
-            <option>Create 3 sentences in B2 level Cantonese containing this chunk: [SELECTED]</option> 
+            <option> [SELECTED]</option> 
             <option>Create 3 sentences in B2 level Cantonese using the same patterns as in this</option>
             <option>Create 3 sentences in B2 level Cantonese using keywords from this</option>
             <option>Create 3 sentences in B2 level Cantonese following the using expressions from this</option>
@@ -951,7 +994,10 @@ const OutputTraining = () => {
               textAlign: 'left',
             }}
       >
-      
+       <FloatingButton 
+        onClick={()=> {goBack(5);}} 
+        icon="<<" 
+      />
       <audio controls onTimeUpdate={handleTimeUpdate} onEnded={onAudioEnded} onPlay={handleStartPlay} ref={audioRef} muted={true}>
       <source src={"https://chinese.eriktamm.com/api/audioexample?dd=" + Date.now() } type="audio/mp3"/>
       </audio>
@@ -964,6 +1010,8 @@ const OutputTraining = () => {
       <button onClick={() => translatePage()}>Tran</button>   
       <button onClick={lookupSentence}>se?</button>
       <button onClick={lookupMark}>se!</button>
+      <button onClick={() => loadSubtitle()}>ls</button>
+        
         <button onClick={() => handleSpeedChange(0.5)}>0.5x</button>
         <button onClick={() => handleSpeedChange(1)}>1x</button>
         <button onClick={() => refreshAudio()}>Ref</button>

@@ -41,7 +41,7 @@ const amazonTranslateFromChinese = (chinesetext,callback) => {
         "text":chinesetext
     },
     callback,
-    (error) => {
+    (error) => {    
         console.log(error);
     });
 }
