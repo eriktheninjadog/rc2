@@ -199,7 +199,7 @@ const addQuestions = async (cwsid,succecallback) => {
 
 
 const addTextToBackground = async (title,source,body,parentCwsId,succecallback) => {
-    
+
     backEndCall("addtext",
     {
         text:body,
@@ -388,7 +388,6 @@ const callPoeWithCallback = async (cwsid,text,bot,clear,successcallback,errorcal
     errorcallback
     );
 }
-
 
 
 const storeValueOnServer = async (storage,key,value) => {
@@ -684,4 +683,15 @@ const removeAudio = async (audiofile,callback) => {
 }
 
 
-export  {removeAudio,addListenedTo,addMP3ToServer,getArticleAudioExample,createexamples,getAudioExample,getTotalOutputTime,getTotalAudioTime,addOutputExercise,callPoeWithCallback,addAudioTimeToBackend,getExampleResult,writeExampleResult,getexamples,callPoe,hideById,testUnderstandingBackend,testVocabBackend,getnewsBackend,grammarBackend,getMemoryDevice,updateCws,getCharacterCWS,directAIQuestionsBackend,classify, lookuphistory,addlookup,extensibleApplyAI,createWordList,fakeWiki,extensibleSimplify,retrieveValueFromServer,storeValueOnServer,directAIQuestionBackend,deleteById,explainParagraph,getTestQuestion,amazonTranslateFromChinese,updateDictionary,directAIAnalyze,directAIAnalyzeGrammar,directAISummarize,directAISimplify,localLookup,getCwsVocabulary,dictionaryLookup,getImportedTexts,getCwsById,addQuestions,backEndCall,addTextToBackground,lookUpPosition};
+const tokenizeChinese = async (text,callback) => {
+    backEndCall("tokenize_chinese",
+    {
+        text:text
+    },
+    callback
+    ,(error) => {
+        console.log(error);
+    });
+}
+
+export  {tokenizeChinese,removeAudio,addListenedTo,addMP3ToServer,getArticleAudioExample,createexamples,getAudioExample,getTotalOutputTime,getTotalAudioTime,addOutputExercise,callPoeWithCallback,addAudioTimeToBackend,getExampleResult,writeExampleResult,getexamples,callPoe,hideById,testUnderstandingBackend,testVocabBackend,getnewsBackend,grammarBackend,getMemoryDevice,updateCws,getCharacterCWS,directAIQuestionsBackend,classify, lookuphistory,addlookup,extensibleApplyAI,createWordList,fakeWiki,extensibleSimplify,retrieveValueFromServer,storeValueOnServer,directAIQuestionBackend,deleteById,explainParagraph,getTestQuestion,amazonTranslateFromChinese,updateDictionary,directAIAnalyze,directAIAnalyzeGrammar,directAISummarize,directAISimplify,localLookup,getCwsVocabulary,dictionaryLookup,getImportedTexts,getCwsById,addQuestions,backEndCall,addTextToBackground,lookUpPosition};

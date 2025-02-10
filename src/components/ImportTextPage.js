@@ -5,12 +5,22 @@ import { Button, Container } from "react-bootstrap";
 import { createMockDocument } from "../datacomponents/MockDataProducer";
 import {backEndCall,addTextToBackground} from "./backendapi/backendcall";
 import { useRef } from "react";
+import { useState } from "react";
+import IntelligentText from './IntelligentText';
+
+
+
+const mykeyhandler = (key) => {
+}
+   
 
 const ImportTextPage = ()=> {
-    const value = React.useContext(UserContext);  
-    //let docreader = value.documentStack.visibleDocument(value.documentStack.depth());
+    const value = React.useContext(UserContext);
     const textarea = useRef();
     const title = useRef();
+
+    const [tokens,setTokens] = useState([]);
+
 
     const generatedoc = ()=> {
         let m = createMockDocument();
@@ -38,17 +48,10 @@ const ImportTextPage = ()=> {
 
     const processText = () => {
         console.log(textarea)
-        let body = textarea.current.value;
-        console.log('body ' + body)
-        let source = "free input";
-        let atitle = title.current.value;
-        let parentCWSid = -1;
-        //title,source,body,parentCwsId,succecallback
-        addTextToBackground(atitle,source,body,-1,
-            data => {
-                value.documentStack.addSingleCwsAsDocument(data);
-                console.log(data)}  
-            );
+        let question = textarea.current.value;
+        backEndCall("ai_anything",{"question":question},(result)=>{
+            setTokens(result);
+        },(error)=>{console.log(error)});
     }
     
     return (
@@ -63,10 +66,11 @@ const ImportTextPage = ()=> {
         <textarea  ref={textarea} cols="30" rows="10">
             </textarea>
         <br></br>    
-        <button onClick={processText}> Submit</button>
+        <button onClick={processText}> Ask AI</button>
         <button onClick={importAuth}> Auth</button>
 
         </Container>
+        <IntelligentText tokens={tokens} keyhandler={mykeyhandler}></IntelligentText> 
         </div>
     );
 }

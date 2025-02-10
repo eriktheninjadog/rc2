@@ -7,6 +7,12 @@ import React from 'react';
 import { useState } from 'react';
 import RCDocumentStack from './datacomponents/RCDocumentStack';
 
+import VideoPlayer from './components/videoplayer';
+import { useEffect } from 'react';
+import { useContext } from 'react';
+
+import Admin from './components/admin';
+  
 import {
   RecoilRoot,
   atom,
@@ -23,6 +29,7 @@ import EditDictionary from './components/EditDictionary';
 import {time_loop} from './components/timedfunctions'
 import { registerEventListener } from './components/eventsystem/EventMarket';
 import { EventType } from './components/eventsystem/Event';
+import CoachComponent from './components/CoachComponent';
 
 
 export const UserContext = React.createContext(null);
@@ -106,10 +113,11 @@ const App = () => {
         <Route path="/import" element={<ImportTextPage />} />
         <Route path="/texts" element={<TextList />} />
         <Route path="/reader" element={<StackedDocumentReader />} />
-        <Route path="/flash" element={<FlashCard />} />
+        <Route path="/coach" element={<CoachComponent />} />
+        <Route path="/video" element={<VideoPlayer/>} />
         <Route path="/editdictionary" element={<EditDictionary />} />
         <Route path="/output" element={<OutputTraining />} />
-
+        
     </Routes>
     </UserContext.Provider>
   </BrowserRouter>

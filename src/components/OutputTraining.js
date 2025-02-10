@@ -16,6 +16,11 @@ import { playEnglishTranslationChrome } from './chromespeech';
 import { isAndroidWebView,isChromebrowser } from './browserdetect';
 import { playTone } from './soundlib';
 
+import { Timer } from "./backendapi/timer";
+
+import { ActivityTimeManager } from "./ActivityManager";
+import {  ActivityTimer } from "./ActivityTimer";
+
 
 const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 const mic = new SpeechRecognition();
@@ -132,6 +137,20 @@ const OutputTraining = () => {
       );
     };
     
+
+
+    const apiManager = new ActivityTimeManager('https://chinese.eriktamm.com/api');
+
+    if (window.readingTimer == undefined) {
+      window.readingTimer = new ActivityTimer(apiManager, 'reading');
+      //Start timer (starts accumulating time)
+    }
+
+    if (window.listeningTimer == undefined) {
+      window.listeningTimer = new ActivityTimer(apiManager, 'listening');
+    // Start timer (starts accumulating time)
+    }
+
 
     const [state, setState] = useState('state1');
     const [question,setQuestion] = useState('This is the sentence');
@@ -267,7 +286,7 @@ const OutputTraining = () => {
 
     const  threeExamples = async () => {
       const clipboardText = await navigator.clipboard.readText();
-      let tmpquestion = 'Create 3 sentences in B2 level Cantonese containing this chunk: ' + clipboardText + ". Return these together with english translation in json format like this: [{\"english\":ENGLISH_SENTENCE,\"chinese\":CANTONESE_TRANSLATION}].Only respond with the json structure."
+      let tmpquestion = 'Create 3 sentences in C1 level Cantonese containing this chunk: ' + clipboardText + ". Return these together with english translation in json format like this: [{\"english\":ENGLISH_SENTENCE,\"chinese\":CANTONESE_TRANSLATION}].Only respond with the json structure."
       createexamples(tmpquestion,'A1', result => {
         let baba = result;
         console.log(baba);
@@ -322,12 +341,13 @@ const OutputTraining = () => {
       });
     });
     window.gamedatabase = gdb;
-    changeState('showquestion');
+    changeState('showquestion')
   });
 };
 
     const startRound = ()=> {
         console.log('startRound');
+        window.readingTimer.start();
         window.changeBot = false;
         let level = document.getElementById('level').value;
         setChosenLevel(level);
@@ -372,6 +392,8 @@ const OutputTraining = () => {
     }
  
     const success = ()=> {
+      window.readingTimer.heartbeat();
+
       let amountTime =  Date.now() - window.questionStart;  
       pickRound(false);
 
@@ -388,6 +410,8 @@ const OutputTraining = () => {
     }
 
     const failure = ()=> {
+      window.readingTimer.heartbeat();
+      
       let amountTime =  Date.now() - window.questionStart;
       pickRound(false);      
       let newEnglish = question;
@@ -431,34 +455,33 @@ const OutputTraining = () => {
     }
 
     const explain = ()=> {
+      window.readingTimer.heartbeat();      
       let txt = '';
       let mytokens = window.gamedatabase[pickedQuestionId].tokens;
       // set the text to be spoken
       for (var i=0;i< mytokens.length;i++) {
         txt = txt + mytokens[i];
       }
-      let selection = window.getSelection().toString();
-      if (selection.length > 0) {
-        txt = selection;        
-      }
-      let bot = document.getElementById('bot').value;      
-      callPoeWithCallback(-1,document.getElementById('explainFormat').value + ' : ' + txt,bot,window.changeBot,result=>{
+      backEndCall('explain_sentence',{'sentence':txt},result=>{
+        console.log(result);
         let txt = '';
-        let tkns = result[3];
+        let tkns = result;
         // set the text to be spoken
           for (var i=0;i< tkns.length;i++) {
             if (tkns[i] == '\n') {
               txt= txt + '<br/>';
             } else
               txt = txt + tkns[i];
-          }   
-        window.displayDialog('hi there',txt);
+          }
+        //window.displayDialog('hi there',txt);
+        setTokens(result);
       },
       error=>{
         console.log(error);
       }
       );
     }
+    
 
 
     function formatTime(seconds) {
@@ -472,13 +495,34 @@ const OutputTraining = () => {
     }
 
     const showStatistics = ()=> {
+            const apiManager = new ActivityTimeManager('https://chinese.eriktamm.com/api');
+            let readingTime = 0;
+            let listeningTime = 0;
+            let writingTime =  0;
+              apiManager.getAccumulatedTime("reading").then( rt => {
+                readingTime = rt['accumulated_time'];;
+                console.log("Reading time: " + readingTime);
+                listeningTime = apiManager.getAccumulatedTime("listening").then(lt => {
+                  listeningTime = lt['accumulated_time'];;
+                  console.log("listening time" + listeningTime);
+                  writingTime = apiManager.getAccumulatedTime("writing").then(wt => {
+                    writingTime = wt['accumulated_time'];
+                    console.log("writing time" + writingTime);
+                    setTotalTimeString("Reading " + formatTime(readingTime/1000) + " Writing " + formatTime(writingTime/1000 ) +" listening " + formatTime(listeningTime/1000  ));
+                    setState('statistics');
+                  });
+                });
+              });
+          }
+
+            /*
             getTotalOutputTime( total => {
-            getTotalAudioTime( totalaudiotime => {
+            getTotalAudioTime( ttalaudiotime => {
               setTotalTimeString( formatTime(total[0]/1000) +' ' + formatTime(total[1]/1000)  + ' Audio:'+ formatTime(totalaudiotime[0]/1000) +' ' + formatTime(totalaudiotime[1]/1000));
               setState('statistics');
             });
-          });
-        }
+          });*/
+        
 
     const changeState = (newState) => {
         setState(newState);
@@ -499,6 +543,7 @@ const OutputTraining = () => {
 
 
   const  showMP3 = (event) => {
+    window.readingTimer.pause();
     backEndCall('getspokenarticles',{},
     result => {
       window.mp3files = result;
@@ -613,12 +658,20 @@ const OutputTraining = () => {
     }
   }
 
+  if (window.timer == undefined)
+    window.timer  = new Timer("https://chinese.eriktamm.com/api/addoutputexercise")
+
+
   const onAudioEnded = (event) => {
 
+    window.listeningTimer.pause();
+
+    window.timer.pause();
     audioRef.current.pause();
     if ( document.getElementById('loopCheckbox').checked) {
       setTimeout(()=> {
           audioRef.current.play();
+          window.timer.start();
       }
       ,
       2000);      
@@ -749,6 +802,10 @@ const OutputTraining = () => {
 
   const handleTimeUpdate = (event) => {
     let now = Date.now();
+    if (window.listeningTimer.getStatus()['isPaused'])
+      window.listeningTimer.start();
+
+    window.writingTimer.pause();
 
     window.currentPlayTime  = event.target.currentTime;
 
@@ -785,30 +842,16 @@ const OutputTraining = () => {
     if ((window.currentPlayTime > window.lastEnglishStartsAt )&& window.ignoreEnglish) {
       audioRef.current.currentTime = window.nextSentenceStartAt;
     }
-
-
-    if (timePassed < 60000) {
-        window.combinedTime += timePassed;
-        if (window.combinedTime > 10000) {
-          //console.log('adding time');
-          addOutputExercise("tralalallala","tralalala","mp3",1,0,window.combinedTime,Date.now(),
-          result => {});
-          window.combinedTime = 0;
-        }
-     }
+    window.timer.start();
      window.lastTime = Date.now();
   };
 
   const startManualTime = event => {
-    window.manualTime = Date.now();
+    window.timer.start();
   }
 
   const stopManualTime = event => {
-    if (window.manualTime === undefined)
-      return;
-    let timePassed = Date.now() - window.manualTime
-    addOutputExercise("tralalallala","manualtime","mp3",1,0,timePassed,Date.now(),result=>{})
-    window.manualTime = 0;
+    window.timer.pause();
   }
 
   const handleStartPlay = (event) => {
@@ -825,7 +868,7 @@ const OutputTraining = () => {
 
   return (
         <container>
-    <Navigation>hi there {state}</Navigation>
+    <Navigation></Navigation>
     <div>
       <div>
         <br></br>
@@ -924,7 +967,7 @@ const OutputTraining = () => {
             <option>Rewrite this to Standard Chinese</option>
             <option>Translate this to English</option>
             </select>
-            <select id="bot" onChange={()=>{window.changeBot = true;}}>Create 3 sentences in B2 level Cantonese containing this chunk:
+            <select id="bot" onChange={()=>{window.changeBot = true;}}>Create 3 sentences in C1 level Cantonese containing this chunk:
             <option>Claude-3-Opus</option>
             <option>GPT-4</option>
             <option>Claude-3-Haiku</option>
@@ -1010,8 +1053,7 @@ const OutputTraining = () => {
       <button onClick={() => translatePage()}>Tran</button>   
       <button onClick={lookupSentence}>se?</button>
       <button onClick={lookupMark}>se!</button>
-      <button onClick={() => loadSubtitle()}>ls</button>
-        
+      <button onClick={() => loadSubtitle()}>ls</button>        
         <button onClick={() => handleSpeedChange(0.5)}>0.5x</button>
         <button onClick={() => handleSpeedChange(1)}>1x</button>
         <button onClick={() => refreshAudio()}>Ref</button>
@@ -1033,6 +1075,8 @@ const OutputTraining = () => {
       </div>
       </div>
     </div>
+    <Navigation></Navigation>
+
     </container>
   );
 };

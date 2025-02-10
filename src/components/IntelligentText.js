@@ -334,6 +334,27 @@ const IntelligentText = (props)=> {
         setShow(true);
     }
 
+    const render = (addonly) => {
+      let txt ='';
+      for (let i=0;i<props.tokens.length;i++) {
+        let token = props.tokens[i];
+        txt += token;
+      }
+      if (window.renderBuffer == undefined)
+        window.renderBuffer = "";
+      window.renderBuffer += txt;
+      window.renderBuffer += '\n';      
+      if (addonly) {
+        alert('in buffer ' + window.renderBuffer);
+        return;
+      }
+      console.log('rendering ' + txt);
+      backEndCall("text2mp3",{"text":txt},(result) => {
+        window.renderBuffer = '';
+      },() => {
+        console.log('error');
+      });
+    }
 
     const onMyKeyDown = (event) => {
         props.keyhandler(event.key);
@@ -358,7 +379,7 @@ const IntelligentText = (props)=> {
     window.code = false;
      return (
         (
-            <div  onKeyDown={onMyKeyDown}  style={{ outline: 'none' }}    id={"iqtextid"}     tabIndex="0">
+            <div onKeyDown={onMyKeyDown}  style={{ outline: 'none' }}    id={"iqtextid"}     tabIndex="0">
             <div onClick={handleClick} id="smarttext" style={{ outline: 'none' }}>
                 {
                 props.tokens.map(
@@ -370,6 +391,9 @@ const IntelligentText = (props)=> {
                         if (window.code) {
                             return (<span dangerouslySetInnerHTML={{__html: value}}></span>);
                         }
+                        if (value.indexOf('href') !=-1) {
+                          return(<span dangerouslySetInnerHTML={{__html: value}}></span>);  
+                        }
                         if (value=='\n')
                             return (<a onClick={innerMenu}>*<br></br></a>);
                         else
@@ -377,6 +401,8 @@ const IntelligentText = (props)=> {
                     })
                 }
             </div>
+            <button onClick={()=>{render(false);}}>render</button>
+            <button onClick={()=>{render(true);}}>add to render</button>
             <Modal show={show} onHide={handleClose}>
             <Modal.Header closeButton>
             <Modal.Title dangerouslySetInnerHTML={{__html: makemodalheading(modalheading)}}></Modal.Title>
@@ -393,7 +419,7 @@ const IntelligentText = (props)=> {
                 if (!isEmpty) {
                     exampleChunk = selection.toString();                    
                 }
-                createexamples("Create 3 sentences in B1 level Cantonese containing this chunk:"+exampleChunk + ". Return these together with english translation in json format like this: [{\"english\":ENGLISH_SENTENCE,\"chinese\":CANTONESE_TRANSLATION}].Only respond with the json structure.","A1",result=>{
+                createexamples("Create 3 sentences in C1 level Cantonese containing this chunk:"+exampleChunk + ". Return these together with english translation in json format like this: [{\"english\":ENGLISH_SENTENCE,\"chinese\":CANTONESE_TRANSLATION}].Only respond with the json structure.","A1",result=>{
                 let baba = result;                
                 let gdb = window.gamedatabase;   
                 if (gdb !== undefined ) {
