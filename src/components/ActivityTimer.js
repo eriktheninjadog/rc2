@@ -2,23 +2,47 @@
 
 import {ActivityTimeManager} from './ActivityManager';
 
+
+
+function getActivityTimer() {
+    if (window.activityTimer == undefined) {
+        window.activityTimer = new ActivityTimer();
+    }
+    return window.activityTimer;
+}
+
 class ActivityTimer {
+
     /**
      * @param {ActivityTimeManager} activityManager - Instance of ActivityTimeManager for API calls
      * @param {string} activityName - Name of the tracked activity
      */
-    constructor(activityManager, activityName) {
-        this.activityManager = activityManager;
-        this.activityName = activityName;
+    
+    constructor() {
+        this.activityManager = new ActivityTimeManager('https://chinese.eriktamm.com/api');
+        this.activityName = null;
         this.timerInterval = null;
         this.heartbeatTimeout = null;
         this.lastHeartbeat = null;
         this.isPaused = true;
         this.HEARTBEAT_THRESHOLD = 3 * 60 * 1000; // 3 minutes in milliseconds
+        console.log(`ActivityTimer created `);
     }
 
-    start() {
-        if (!this.isPaused) return;
+    changeActivityName(newActivityName) {
+        this.activityName = newActivityName;
+        this.pause();
+        this.lastHeartbeat = null;
+        ActivityTimer.instance = this;
+        console.log(`Activity name changed to: ${newActivityName}`);
+    }
+
+    start(newActivityName) {
+        if (!this.isPaused) {
+            console.log(`Calling activity but activity already started: ${newActivityName}`);
+            return;
+        }
+        this.activityName = newActivityName;
         this.isPaused = false;
         
         // Initial heartbeat to start timer
@@ -32,17 +56,21 @@ class ActivityTimer {
                         this.activityName, 
                         60000 // 1 minute
                     );
+                    console.log(`1 minute added to activity: ${this.activityName}`);
                 } catch (error) {
                     console.error('Automatic time addition failed:', error);
                 }
             }
         }, 60000); // Every minute
+
+        console.log(`ActivityTimer started for activity: ${this.activityName}`);
     }
 
     pause() {
         clearInterval(this.timerInterval);
         this.timerInterval = null;
         this.isPaused = true;
+        console.log(`ActivityTimer paused for activity: ${this.activityName}`);
     }
 
     heartbeat() {
@@ -62,16 +90,31 @@ class ActivityTimer {
                 console.log('Paused due to lack of heartbeat');
             }
         }, this.HEARTBEAT_THRESHOLD);
+
+        console.log(`Heartbeat recorded for activity: ${this.activityName}`);
+    }
+
+    isRunning() {
+        return !this.isPaused;
     }
 
     getStatus() {
-        return {
+        const status = {
             activity: this.activityName,
             isPaused: this.isPaused,
             lastHeartbeat: new Date(this.lastHeartbeat),
             elapsedSinceHeartbeat: Date.now() - this.lastHeartbeat
         };
+        console.log(`Status retrieved:`, status);
+        return status;
     }
+    
+    changeActivityName(newActivityName) {
+        this.activityName = newActivityName;
+        this.pause();
+        this.lastHeartbeat = null;
+        ActivityTimer.instance = this; }
+
 }
 
-export {ActivityTimer}
+export {getActivityTimer}

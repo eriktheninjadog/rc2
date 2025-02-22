@@ -1,0 +1,28 @@
+
+.pinyin-popup {
+    position: absolute;
+    border: 1px solid #ccc;
+    background: white;
+    max-height: 200px;
+    overflow-y: auto;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    z-index: 1000;
+    display: none;
+}
+
+.pinyin-item {
+    padding: 8px;
+    cursor: pointer;
+    display: inline-block;
+    margin: 2px;
+font-size:20px;
+}
+
+.pinyin-item:hover, .pinyin-item.selected {
+    background-color: #f0f0f0;
+}
+
+#loading-indicator {
+    color: #666;
+    margin-top: 10px;
+}

@@ -13,11 +13,17 @@ import React from "react";
 import IntelligentText from "./IntelligentText";
 import { SRTParser } from "./srtparser";
 
+import { ActivityTimeManager } from "./ActivityManager";
+import {  ActivityTimer, getActivityTimer } from "./ActivityTimer";
+import { getActiveElement } from "@testing-library/user-event/dist/utils";
+
+
 const VideoPlayer = ({ src, type, poster, width, height, controls = true }) => {
 
     const [tokens,setTokens] = useState([]);
     const videoRef = useRef(null);
     const videoName = useRef(null);
+
 
     if (window.srtParser == undefined)
       window.srtParser=new SRTParser("https://chinese.eriktamm.com/watchit/deadringer2.srt");
@@ -49,6 +55,7 @@ const VideoPlayer = ({ src, type, poster, width, height, controls = true }) => {
 
 
     const handleTimeUpdate = (time) => {
+     getActivityTimer().heartbeat();
      window.timer.start();
         let mytime = videoRef.current.currentTime;
         let secs = parseFloat(mytime);        
@@ -95,7 +102,14 @@ const VideoPlayer = ({ src, type, poster, width, height, controls = true }) => {
           controls={true}
           poster={poster}
           onTimeUpdate={handleTimeUpdate}
+          onPlay={()=>{
+            if (getActivityTimer().isRunning() == true) {
+              getActivityTimer().pause();
+            }
+            getActivityTimer().start('listening');
+            }}
           ref={videoRef}
+          
         >
           <source src="https://chinese.eriktamm.com/watchit/deadringer2.webm" type={type || "video/webm"} />
           Your browser does not support the video tag.

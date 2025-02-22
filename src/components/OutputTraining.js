@@ -19,7 +19,7 @@ import { playTone } from './soundlib';
 import { Timer } from "./backendapi/timer";
 
 import { ActivityTimeManager } from "./ActivityManager";
-import {  ActivityTimer } from "./ActivityTimer";
+import { getActivityTimer } from "./ActivityTimer";
 
 
 const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -137,21 +137,6 @@ const OutputTraining = () => {
       );
     };
     
-
-
-    const apiManager = new ActivityTimeManager('https://chinese.eriktamm.com/api');
-
-    if (window.readingTimer == undefined) {
-      window.readingTimer = new ActivityTimer(apiManager, 'reading');
-      //Start timer (starts accumulating time)
-    }
-
-    if (window.listeningTimer == undefined) {
-      window.listeningTimer = new ActivityTimer(apiManager, 'listening');
-    // Start timer (starts accumulating time)
-    }
-
-
     const [state, setState] = useState('state1');
     const [question,setQuestion] = useState('This is the sentence');
     const [chinese,setChinese] = useState('This is the chinese');
@@ -347,7 +332,9 @@ const OutputTraining = () => {
 
     const startRound = ()=> {
         console.log('startRound');
-        window.readingTimer.start();
+        if (getActivityTimer().isRunning())
+          getActivityTimer().pause();
+        getActivityTimer().start('reading');
         window.changeBot = false;
         let level = document.getElementById('level').value;
         setChosenLevel(level);
@@ -392,8 +379,7 @@ const OutputTraining = () => {
     }
  
     const success = ()=> {
-      window.readingTimer.heartbeat();
-
+      getActivityTimer().heartbeat();
       let amountTime =  Date.now() - window.questionStart;  
       pickRound(false);
 
@@ -410,8 +396,7 @@ const OutputTraining = () => {
     }
 
     const failure = ()=> {
-      window.readingTimer.heartbeat();
-      
+      getActivityTimer().heartbeat();      
       let amountTime =  Date.now() - window.questionStart;
       pickRound(false);      
       let newEnglish = question;
@@ -455,7 +440,6 @@ const OutputTraining = () => {
     }
 
     const explain = ()=> {
-      window.readingTimer.heartbeat();      
       let txt = '';
       let mytokens = window.gamedatabase[pickedQuestionId].tokens;
       // set the text to be spoken
@@ -515,15 +499,7 @@ const OutputTraining = () => {
               });
           }
 
-            /*
-            getTotalOutputTime( total => {
-            getTotalAudioTime( ttalaudiotime => {
-              setTotalTimeString( formatTime(total[0]/1000) +' ' + formatTime(total[1]/1000)  + ' Audio:'+ formatTime(totalaudiotime[0]/1000) +' ' + formatTime(totalaudiotime[1]/1000));
-              setState('statistics');
-            });
-          });*/
         
-
     const changeState = (newState) => {
         setState(newState);
     };
@@ -543,9 +519,10 @@ const OutputTraining = () => {
 
 
   const  showMP3 = (event) => {
-    window.readingTimer.pause();
     backEndCall('getspokenarticles',{},
     result => {
+      getActivityTimer().pause();
+      getActivityTimer().start('listening');
       window.mp3files = result;
       setState('pickmp3');
     },
@@ -554,6 +531,9 @@ const OutputTraining = () => {
   }
 
   const pickAMP3=(event) => {
+    getActivityTimer().pause();
+    getActivityTimer().start('listening');
+
     backEndCall('getspokenarticle',
     {'mp3file':event.target.innerText,'next':false},
     result => {
@@ -664,7 +644,7 @@ const OutputTraining = () => {
 
   const onAudioEnded = (event) => {
 
-    window.listeningTimer.pause();
+    getActivityTimer().pause();
 
     window.timer.pause();
     audioRef.current.pause();
@@ -721,36 +701,7 @@ const OutputTraining = () => {
     audioRef.current.play();
   }
 
-  const playEnglishTranslation = (text,onStart,onEnd) => {
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.onend = function(event) {
-      onEnd();
-    };
-    utterance.onerror = function(event) {
-      console.error('An error occurred:', event.error);
-    };
-    onStart();
-    speechSynthesis.speak(utterance);
-  }
-
-  const findLineFromTime = (timepoint) =>{
-    if (times == null) {
-      console.log('no times given');
-      return;
-    }
-    for (var i=0;i<times.length;i++) {
-      let startAt = times[i][2];
-      let duration = times[i][3];
-      if (timepoint > startAt && timepoint < (startAt+duration)) {
-        window.lastSentence = times[i][1];
-        window.lastTokens = times[i][0];
-        window.lastSentenceStartTime = times[i][2];
-        window.lastEnglishStartsAt = window.lastSentenceStartTime + (duration - times[i][4])
-        window.nextSentenceStartAt = startAt+duration;
-      }
-    } 
-  }
-
+  
   const calculateTokenFromTime = (currentTime,totalTime) => {
     let chosentoken =  Math.round(tokens.length*(currentTime / totalTime));
     let found = -1;
@@ -802,10 +753,9 @@ const OutputTraining = () => {
 
   const handleTimeUpdate = (event) => {
     let now = Date.now();
-    if (window.listeningTimer.getStatus()['isPaused'])
-      window.listeningTimer.start();
 
-    window.writingTimer.pause();
+    getActivityTimer().heartbeat();
+
 
     window.currentPlayTime  = event.target.currentTime;
 
@@ -855,6 +805,9 @@ const OutputTraining = () => {
   }
 
   const handleStartPlay = (event) => {
+    if (getActivityTimer().isRunning())
+      getActivityTimer.pause();
+    getActivityTimer().start('listening');
     console.log('handleStartPlay');
     window.combinedTime = 0;
     window.lastTime = Date.now();

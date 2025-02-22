@@ -21,6 +21,20 @@ const backEndCall = async (endpoint,parameters,successcallback, errorcallback) =
     });
 }
 
+const backEndCallGet = async (endpoint,successcallback, errorcallback) => {
+    console.log('endpont:' + endpoint);
+    axios.get('https://chinese.eriktamm.com/api/'+endpoint)
+    .then(function (response) {
+        console.log(response.data.result);
+        successcallback(response.data.result)
+    })
+    .catch(function (error) {
+        errorcallback(error)
+    });
+}
+
+
+
 
 const backEndCallWithCWS = async (endpoint,parameters, errorcallback) => {
     console.log('endpont:' + endpoint);
@@ -694,4 +708,4 @@ const tokenizeChinese = async (text,callback) => {
     });
 }
 
-export  {tokenizeChinese,removeAudio,addListenedTo,addMP3ToServer,getArticleAudioExample,createexamples,getAudioExample,getTotalOutputTime,getTotalAudioTime,addOutputExercise,callPoeWithCallback,addAudioTimeToBackend,getExampleResult,writeExampleResult,getexamples,callPoe,hideById,testUnderstandingBackend,testVocabBackend,getnewsBackend,grammarBackend,getMemoryDevice,updateCws,getCharacterCWS,directAIQuestionsBackend,classify, lookuphistory,addlookup,extensibleApplyAI,createWordList,fakeWiki,extensibleSimplify,retrieveValueFromServer,storeValueOnServer,directAIQuestionBackend,deleteById,explainParagraph,getTestQuestion,amazonTranslateFromChinese,updateDictionary,directAIAnalyze,directAIAnalyzeGrammar,directAISummarize,directAISimplify,localLookup,getCwsVocabulary,dictionaryLookup,getImportedTexts,getCwsById,addQuestions,backEndCall,addTextToBackground,lookUpPosition};
+export  {backEndCallGet,tokenizeChinese,removeAudio,addListenedTo,addMP3ToServer,getArticleAudioExample,createexamples,getAudioExample,getTotalOutputTime,getTotalAudioTime,addOutputExercise,callPoeWithCallback,addAudioTimeToBackend,getExampleResult,writeExampleResult,getexamples,callPoe,hideById,testUnderstandingBackend,testVocabBackend,getnewsBackend,grammarBackend,getMemoryDevice,updateCws,getCharacterCWS,directAIQuestionsBackend,classify, lookuphistory,addlookup,extensibleApplyAI,createWordList,fakeWiki,extensibleSimplify,retrieveValueFromServer,storeValueOnServer,directAIQuestionBackend,deleteById,explainParagraph,getTestQuestion,amazonTranslateFromChinese,updateDictionary,directAIAnalyze,directAIAnalyzeGrammar,directAISummarize,directAISimplify,localLookup,getCwsVocabulary,dictionaryLookup,getImportedTexts,getCwsById,addQuestions,backEndCall,addTextToBackground,lookUpPosition};
