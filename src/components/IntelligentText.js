@@ -103,6 +103,37 @@ function getRandomElementsFromArray(arr, count) {
     return desiredElements;
   }
 
+  /**
+   * Makes a GET request to add Jyutping pronunciation for a Chinese character
+   * @param {string} character - The Chinese character(s)
+   * @param {string} jyutping - The Jyutping pronunciation
+   * @returns {Promise} - Promise resolving to the response data
+   */
+  const addJyutping = (character, jyutping) => {
+    return new Promise((resolve, reject) => {
+      const encodedCharacter = encodeURIComponent(character);
+      const jyutpingClean = jyutping.replace(/[^a-z]/g, '');
+      const encodedJyutping = encodeURIComponent(jyutpingClean);
+      const url = `https://chinese.eriktamm.com/api/add_jyutping?character=${encodedCharacter}&jyutping=${encodedJyutping}`;      
+      fetch(url)
+      .then(response => {
+        if (!response.ok) {
+        throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+        return response.json();
+      })
+      .then(data => {
+        resolve(data);
+      })
+      .catch(error => {
+        console.error('Error adding Jyutping:', error);
+        reject(error);
+      });
+    });
+  };
+
+
+
 
 const IntelligentText = (props)=> {
 
@@ -327,8 +358,9 @@ const IntelligentText = (props)=> {
         dictionaryLookup(modalheading,result => {
             console.log(' ok here we go! ' + word)
             let content = result[0] +  " " + result[1] + " " + result[2] + "<br>";
-       
-            alert(content);
+            window.lastWordChinese = result[0];
+            window.lastWordJyutping = result[1];
+            addJyutping(result[0],result[1]);
             setmodalcontent(content);
         });
         setShow(true);
@@ -370,7 +402,9 @@ const IntelligentText = (props)=> {
         dictionaryLookup(modalheading,result => {
             console.log(' ok here we go! ' + word)
             let content = result[0] +  " " + result[1] + " " + result[2] + "<br>";
-
+            window.lastWordChinese = result[0];
+            window.lastWordJyutping = result[1];
+            addJyutping(result[0],result[1]);
             setmodalcontent(content);
         });
         setShow(true);

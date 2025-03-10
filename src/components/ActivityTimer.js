@@ -74,7 +74,9 @@ class ActivityTimer {
     }
 
     heartbeat() {
-        if (this.isPaused) return;
+        if (this.isPaused) {
+            return;
+        }
         
         this.lastHeartbeat = Date.now();
         

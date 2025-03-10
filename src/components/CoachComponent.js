@@ -299,7 +299,13 @@ async function fetchWritingTime() {
         }
         const data = await response.json();
         setTotalTime(data.totalTime);
-        setDailyTime(data.dailyTime);
+
+        if (getActivityTimer().isPaused ==true ) {
+            setDailyTime("paused");    
+        }
+        else {
+            setDailyTime(data.dailyTime);
+        }
     } catch (error) {
         console.error('Failed to fetch writing time:', error);
     }
@@ -351,8 +357,7 @@ if (window.sessionId == null)
                Sys-inp
         </button>
         <button onClick={() => { document.getElementById('input').value = ''; }}>clear
-            </button>
-        
+            </button>        
         <br></br>
         <textarea id="input" onChange={()=>{getActivityTimer().heartbeat();}} placeholder="Type your message..."></textarea>
     <button onClick={()=>{sendMessage();}}>Send</button><button onClick={()=>{ window.pinyinMap = null;  pinyinLookup.loadPinyinData();}}>Load</button>
