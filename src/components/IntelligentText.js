@@ -4,6 +4,10 @@
 // calls the function on a click with the function of that tooken
 
 import React, { startTransition, useState } from 'react';
+import FloatingButton from './floatingbutton';
+import CommandParser from './CommandParser';
+import ClozeTest from './ClozeTest';
+
 
 import { callPoeWithCallback, backEndCall,addlookup,createWordList, amazonTranslateFromChinese, dictionaryLookup,addOutputExercise } from "./backendapi/backendcall";
 
@@ -13,12 +17,15 @@ import Modal from 'react-bootstrap/Modal';
 
 import { lookupOTC ,findCharactersWithComponent} from "../datacomponents/OTCLookup";
 import { keyboard } from '@testing-library/user-event/dist/keyboard';
+import { getActivityTimer } from './ActivityTimer';
 
 let tokens = [ 'a',' ','dog',' ','is',' ','nice']; 
 
 let modalheading = '';
 let modalcontent = '';
 let cleanmodalheading = '';
+
+
 
 
 const makemodalheading = word => {
@@ -31,21 +38,49 @@ const makemodalheading = word => {
 
 
 const createexamples = async (question,level,callback    ) => {
-    backEndCall("poeexamples",
-    {
-        level:level,
-        number:10,
-        onlyFailed:false,
-        language: 'spoken vernacular Cantonese',
-        store:true,
-        question:question
-    },
-    callback
-    ,(error) => {
-        console.log(error);
-    }
-    )
+  backEndCall("poeexamples",
+  {
+    level:level,
+    number:10,
+    onlyFailed:false,
+    language: 'spoken vernacular Cantonese',
+    store:true,
+    question:question
+  },
+  callback
+  ,(error) => {
+    console.log(error);
+  }
+  )
 }
+
+// Save a word to localStorage with timestamp
+const saveWordToList = (word) => {
+  // Get existing list or initialize empty array
+  const existingListString = localStorage.getItem('wordList');
+  const wordList = existingListString ? JSON.parse(existingListString) : [];
+  
+  // Clean expired words (older than 72 hours)
+  const now = Date.now();
+  const THREE_DAYS_MS = 72 * 60 * 60 * 1000;
+  const filteredList = wordList.filter(item => {
+    return (now - item.timestamp) < THREE_DAYS_MS;
+  });
+  
+  // Add new word if it doesn't exist
+  if (!filteredList.some(item => item.word === word)) {
+    filteredList.push({
+      word: word,
+      timestamp: now
+    });
+  }
+  
+  // Save updated list
+  localStorage.setItem('wordList', JSON.stringify(filteredList));
+  return filteredList;
+};
+
+// Get comma-separated list of words
 
 
 const addToExamplesFromDialog = (chinese,english) => {
@@ -62,46 +97,6 @@ const addToExamplesFromDialog = (chinese,english) => {
 }
 
 
-const checkCharacterDetails = (stringofchars) => {
-    let cc = [];
-    for (let i =0;i<stringofchars.length;i++) {
-        let c = stringofchars[i];
-        let looks = lookupOTC(c);
-        if (looks != null) {
-            
-            let ba = Object.keys(looks['components']);
-            for (var jj = 0; jj<ba.length;jj++) {
-                let comp = ba[jj];
-                let partOf = findCharactersWithComponent(comp);
-                if (partOf.length > 0) {
-                    for(let ii=0;ii<partOf.length;ii++) {
-                        cc.push(partOf[ii]);
-                    }
-                }
-            }
-        }            
-    }
-    let thewords = getRandomElementsFromArray(cc,10);
-    //callPoe(cwsid,'Write a paragraph of 100-200 words in traditional Chinese that contains all these characters: ' + thewords,'GPT-4', true);
-    //handleClose();
-}
-
-function getRandomElementsFromArray(arr, count) {
-    const shuffled = arr.slice(); // Create a shallow copy of the array
-    let currentIndex = shuffled.length;
-    const desiredElements = [];
-  
-    // While there are elements to pick and shuffle
-    while (desiredElements.length < count && currentIndex > 0) {
-      const randomIndex = Math.floor(Math.random() * currentIndex);
-      currentIndex--;  
-      // Swap the current element with a randomly selected element
-      [shuffled[currentIndex], shuffled[randomIndex]] = [shuffled[randomIndex], shuffled[currentIndex]];  
-      // Add the selected element to the desired elements array
-      desiredElements.push(shuffled[currentIndex]);
-    }
-    return desiredElements;
-  }
 
   /**
    * Makes a GET request to add Jyutping pronunciation for a Chinese character
@@ -140,6 +135,8 @@ const IntelligentText = (props)=> {
 
     const [modalcontent,setmodalcontent] = useState('');
     const [show,setShow] = useState(false);
+    const [clozeData, setClozeData] = useState(null);
+
 
     
     const innerMenu = (event) => {
@@ -192,150 +189,10 @@ const IntelligentText = (props)=> {
         addOutputExercise(english,[chinese],'B1',2,1,0,Date.now(), result => {});
     }
 
-
-    function extractEnspeak(text) {
-        const regex = /<enspeak>([\s\S]*?)<\/enspeak>/g;
-        const matches = [];
-        let match;
-      
-        while ((match = regex.exec(text)) !== null) {
-          matches.push(match[1]);
-        }
-      
-        return matches;
-      }
-
-
-      function removeTags(text) {
-        
-        return new Promise((resolve, reject) => {
-          try {
-            // Regular expression to match any tag
-            const tagRegex = /<[^>]+>/g;
-            
-            // Replace all tags with an empty string
-            const result = text.replace(tagRegex, '');
-            
-            // Resolve the promise with the result
-            resolve(result);
-          } catch (error) {
-            // If any error occurs, reject the promise
-            reject(error);
-          }
-        });
-      }
-      /*
-    function removeTags(text) {
-        // Regular expression to match any tag
-        const tagRegex = /<[^>]+>/g;
-        
-        // Replace all tags with an empty string
-        return text.replace(tagRegex, '');
-      }
-    */
-
-    function extractEnglishTranslation(text) {
-
-        if (text.indexOf('</enspeak>')!=-1) {
-            text = text.substring(text.indexOf(':') );
-            let str = extractEnspeak(text);
-            let bridx = str.indexOf('<br/>');
-            if (bridx != -1) {
-                str = str.substring(bridx)+4;
-            }
-            //let newstr = removeTags(str);
-            return str;
-        }
-        // Split the text into lines
-        const lines = text.split('\n');
-        
-        // Find the starting index
-        let startIndex = lines.findIndex(line => line.trim() === "English translation:");
-
-        if (startIndex === -1) {
-            startIndex = lines.findIndex(line => line.trim() === "Translation:");
-        }
-        
-        
-        if (startIndex === -1) {
-          return ""; // "English translation:" not found
-        }
-        
-        let extractedLines = [];
-        let emptyLineCount = 0;
-        
-        // Start from the line after "English translation:"
-        for (let i = startIndex + 2; i < lines.length; i++) {
-          const line = lines[i].trim();
-          if (line === "") {
-            emptyLineCount++;
-            if (emptyLineCount === 4) {
-              break; // Stop if we've encountered two consecutive empty lines
-            }
-          } else {
-            emptyLineCount = 0; // Reset count if we encounter a non-empty line
-            extractedLines.push(line);
-          }
-        }
-        
-        return extractedLines.join('\n');
-      }
-      
-      function speakEnglish(text, callback) {
-        if ('speechSynthesis' in window) {
-          let utterance = new SpeechSynthesisUtterance();
-          
-          utterance.text = text;
-          utterance.lang = 'en-US';
-          
-          utterance.onend = function(event) {
-            console.log('Speech finished successfully');
-            if (typeof callback === 'function') {
-              callback();
-            }
-          };
-          
-          utterance.onerror = function(event) {
-            console.error('Speech synthesis error:', event.error);
-            if (typeof callback === 'function') {
-                alert(event.error);
-                callback(event.error);
-            }
-          };
-          
-          try {
-            window.speechSynthesis.speak(utterance);
-          } catch (error) {
-            alert(error);
-            console.error('Error initiating speech:', error);
-            if (typeof callback === 'function') {                
-              callback(error);
-            }
-          }
-        } else {
-          console.error('Text-to-speech not supported in this browser');
-          if (typeof callback === 'function') {
-            alert('Text-to-speech not supported');
-            callback('Text-to-speech not supported');
-          }
-        }
-      } 
-      // Usage
- 
     const displayDialog = (headline,content) => {
         setmodalcontent(content);
         modalheading = headline;
         console.log('displayDialog ' + headline + ' ' + content);
-        /*
-        let sayit = extractEnglishTranslation(content);
-        if (sayit !== "")
-            speakEnglish(sayit,()=> {
-                window.startEvent();
-            } ); else {
-                console.log('no english found in ' + content );
-                window.startEvent();
-            }
-                */
         setShow(true);
       };
 
@@ -393,27 +250,34 @@ const IntelligentText = (props)=> {
     }
 
     const handleClick = (event) => {
-        modalheading = event.target.innerText;
-        let word = modalheading;
-        navigator.clipboard.writeText(word);
-        if (word.length > 10) {
-            return;    
-        }
-        dictionaryLookup(modalheading,result => {
-            console.log(' ok here we go! ' + word)
-            let content = result[0] +  " " + result[1] + " " + result[2] + "<br>";
-            window.lastWordChinese = result[0];
-            window.lastWordJyutping = result[1];
-            addJyutping(result[0],result[1]);
-            setmodalcontent(content);
-        });
-        setShow(true);
+          
+      // Store tokens in localStorage
+      localStorage.setItem('intelligentTextTokens', JSON.stringify(props.tokens));
+      
+      getActivityTimer().heartbeat();
+      modalheading = event.target.innerText;
+      let word = modalheading;
+      navigator.clipboard.writeText(word);
+      if (word.length > 10) {
+        return;    
+      }
+      saveWordToList(word);
+      dictionaryLookup(modalheading,result => {
+        console.log(' ok here we go! ' + word)
+        let content = result[0] +  " " + result[1] + " " + result[2] + "<br>";
+        window.lastWordChinese = result[0];
+        window.lastWordJyutping = result[1];
+        addJyutping(result[0],result[1]);
+        setmodalcontent(content);
+      });
+      setShow(true);
     }
     window.displayDialog = displayDialog;
     window.code = false;
      return (
         (
             <div onKeyDown={onMyKeyDown}  style={{ outline: 'none' }}    id={"iqtextid"}     tabIndex="0">
+                        
             <div onClick={handleClick} id="smarttext" style={{ outline: 'none' }}>
                 {
                 props.tokens.map(
@@ -435,8 +299,16 @@ const IntelligentText = (props)=> {
                     })
                 }
             </div>
+            <FloatingButton 
+        onClick={()=> {}} 
+        icon="+" 
+      />
+
             <button onClick={()=>{render(false);}}>render</button>
             <button onClick={()=>{render(true);}}>add to render</button>
+            {clozeData && <ClozeTest data={clozeData} />}
+
+
             <Modal show={show} onHide={handleClose}>
             <Modal.Header closeButton>
             <Modal.Title dangerouslySetInnerHTML={{__html: makemodalheading(modalheading)}}></Modal.Title>
@@ -464,7 +336,7 @@ const IntelligentText = (props)=> {
                 }
 
             }); }}>CExample </Button>
-            <Button variant="secondary" onClick={()=>{addToExamplesFromDialog(modalheading,modalcontent)}}>addit</Button>            
+            <Button variant="secondary" onClick={()=>{addToExamplesFromDialog(modalheading,modalcontent)}}>addit</Button> 
             </Modal.Footer>
             </Modal>
             </div>

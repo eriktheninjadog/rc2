@@ -4,8 +4,14 @@ import axios from "axios";
 
 import React, { startTransition, useState ,useRef,useEffect} from 'react';
 import Navigation from './Navigation';
+
+
+import { tokenizeChinese } from "./backendapi/backendcall";
+import { SRTParser } from "./srtparser";
+
+
 import IntelligentText from './IntelligentText';
-import FloatingButton from "./floatingbutton";
+
 
 import {addSentence,removeAudio,addListenedTo,addMP3ToServer,getArticleAudioExample,createexamples,getAudioExample,getTotalOutputTime,getTotalAudioTime, callPoeWithCallback,addAudioTimeToBackend,callPoe,getExampleResult, getexamples,writeExampleResult, addOutputExercise, backEndCall} from "./backendapi/backendcall"
 
@@ -222,8 +228,28 @@ const OutputTraining = () => {
         window.clearChinese = clearChinese;
     } 
 
-    const addSentence = () => {
+    const addSentence = async () => {
       let selection = window.getSelection().toString();
+      if (selection.length === 0) {
+      
+        // If no text is selected, try to get text from clipboard
+        try {
+          const clipboardText = await navigator.clipboard.readText();
+          if (clipboardText) {
+            // Use the clipboard text as selection
+            selection = clipboardText;
+          } else {
+            // Handle empty clipboard case
+            console.log("No text selected and clipboard is empty");
+            return;
+          }
+        } catch (err) {
+          console.error("Failed to read clipboard contents: ", err);
+          return;
+        }
+      }
+
+
       callPoeWithCallback(-1,"Explain this sentence,grammar and vocab using English" + ' : ' + selection,'Claude-3-Opus','Claude-3-Opus',result=>{
         console.log(result);
         console.log(intelligentTextRef);  
@@ -540,7 +566,14 @@ const OutputTraining = () => {
       window.currentSentences = result['tokens'];
       setTokens(result['tokens']);
       setExtendedTokens(result['extendedtokens']);
+
       audioRef.current.src = 'mp3/' +result['filepath'];
+
+      // Extract the filename (basename) without extension
+      const audioBasename = result['filepath'].split('/').pop().replace(/\.[^/.]+$/, '');
+      console.log('Audio basename:', audioBasename);
+      window.srtParser=new SRTParser("https://chinese.eriktamm.com/watchit/"+ audioBasename +".srt");
+      window.srtParser.fetchSRT();      
       setState('statistics');
     });
   }
@@ -644,8 +677,7 @@ const OutputTraining = () => {
 
   const onAudioEnded = (event) => {
 
-    getActivityTimer().pause();
-
+    
     window.timer.pause();
     audioRef.current.pause();
     if ( document.getElementById('loopCheckbox').checked) {
@@ -751,11 +783,50 @@ const OutputTraining = () => {
     return txt;
   }
 
+
+   const handleSRTTimeUpdate = (time) => {
+       getActivityTimer().heartbeat();
+       window.timer.start();
+       let subtitle = null;
+
+          let mytime = audioRef.current.currentTime;
+          let secs = parseFloat(mytime);  
+          subtitle = window.srtParser.getSRT(secs);
+          window.subtitle = subtitle;
+          const cacheKey = `tokenize_${subtitle}`;
+          if (subtitle == null) {
+            console.log("No SRT");
+            let msg = 'Current play time: '+mytime+' seconds'
+            setTokens([msg]);
+          }
+          else{
+            console.log(subtitle);
+            const cachedTokens = localStorage.getItem(cacheKey);
+              if (cachedTokens) {
+                  setTokens(JSON.parse(cachedTokens));
+                  return;
+              }
+            
+            tokenizeChinese(subtitle,(result) => {
+              if  (result == null) {
+                console.log("No tokens");
+                setTokens(["no tokens"]);
+              } else {
+                localStorage.setItem(cacheKey, JSON.stringify(result));             
+                setTokens(result);
+              }
+            });
+            setTokens([subtitle]);
+          }
+         };
+
   const handleTimeUpdate = (event) => {
     let now = Date.now();
 
-    getActivityTimer().heartbeat();
-
+    if (window.srtParser.subtitles != null && window.srtParser.subtitles.length > 0) {
+      handleSRTTimeUpdate(event.target.currentTime);
+    return;
+    }
 
     window.currentPlayTime  = event.target.currentTime;
 
@@ -805,8 +876,6 @@ const OutputTraining = () => {
   }
 
   const handleStartPlay = (event) => {
-    if (getActivityTimer().isRunning())
-      getActivityTimer.pause();
     getActivityTimer().start('listening');
     console.log('handleStartPlay');
     window.combinedTime = 0;
@@ -990,10 +1059,6 @@ const OutputTraining = () => {
               textAlign: 'left',
             }}
       >
-       <FloatingButton 
-        onClick={()=> {goBack(5);}} 
-        icon="<<" 
-      />
       <audio controls onTimeUpdate={handleTimeUpdate} onEnded={onAudioEnded} onPlay={handleStartPlay} ref={audioRef} muted={true}>
       <source src={"https://chinese.eriktamm.com/api/audioexample?dd=" + Date.now() } type="audio/mp3"/>
       </audio>

@@ -37,11 +37,23 @@ export const UserContext = React.createContext(null);
 setInterval(function () {time_loop();}, 1000);
 
 
+const handleSelection = () => {
+  const selection = window.getSelection();
+  if (selection.rangeCount > 0) {
+    const range = selection.getRangeAt(0);
+    const selectedText = range.toString();
+    console.log('Selected text:', selectedText);
+  }
+}
+
 
 
 const App = () => {
 
   const [documentStack, setDocumentStack] = useState(new RCDocumentStack());
+
+
+  document.addEventListener('selectionchange', handleSelection);
 
 
 

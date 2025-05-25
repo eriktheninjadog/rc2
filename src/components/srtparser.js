@@ -31,7 +31,11 @@ class SRTParser {
         let currentSubtitle = {};
 
         lines.forEach(line => {
-            if (line.match(/^\d+$/)) {
+            if (line[0] === '#') {
+                
+            }
+            else
+            if (line.match(/^\d+$/) || line.length == 0) {
                 if (currentSubtitle.text) {
                     this.subtitles.push(currentSubtitle);
                 }
@@ -56,6 +60,20 @@ class SRTParser {
         return hours * 3600 + minutes * 60 + seconds + milliseconds / 1000;
     }
 
+
+    getSRTIndex(idx) {
+        let chosenSubtitle = null;
+        let cnt = 1
+        for (const subtitle of this.subtitles) {
+            if (cnt == idx) {
+                chosenSubtitle = subtitle;
+                break;
+            }
+            cnt++;
+        }
+        return chosenSubtitle ? chosenSubtitle.index : null;
+    }
+
     getSRT(time) {
         let chosenSubtitle = null;
 
@@ -73,7 +91,7 @@ class SRTParser {
 
 // Usage example:
 async function exampleUsage() {
-    const srtUrl = 'https://example.com/subtitles.srt';
+    const srtUrl = 'https://exhttps://chinese.eriktamm.com/watchit/U83D8ZStPozz.srtample.com/subtitles.srt';
     const srtParser = new SRTParser(srtUrl);
 
     await srtParser.fetchSRT();

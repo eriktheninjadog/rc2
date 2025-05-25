@@ -17,6 +17,43 @@ import { ActivityTimeManager } from "./ActivityManager";
 import {  ActivityTimer, getActivityTimer } from "./ActivityTimer";
 import { getActiveElement } from "@testing-library/user-event/dist/utils";
 
+// Function to fetch webm files from the backend
+// Function to fetch webm files from the backend
+const fetchWebmFiles = () => {
+  fetch('/api/get_webm_files')
+    .then(response => {
+      if (!response.ok) {
+        throw new Error('Network response was not ok');
+      }
+      return response.json();
+    })
+    .then(data => {
+      if (data.result) {
+        // Join the filenames with newlines for better readability in textarea
+        const filesText = data.result.join('\n');
+        document.getElementById('files').value = filesText;
+      } else if (data.error) {
+        console.error('Error fetching files:', data.error);
+        document.getElementById('files').value = 'Error: ' + data.error;
+      }
+    })
+    .catch(error => {
+      console.error('Error fetching webm files:', error);
+      document.getElementById('files').value = 'Error fetching files: ' + error.message;
+    });
+};
+
+// Function to get drift value as integer with default of 0
+const getDrift = () => {
+  const driftInput = document.getElementById('drift');
+  if (!driftInput || driftInput.value === '') {
+    return -1;
+  }
+  
+  const value = parseInt(driftInput.value, 10);
+  return isNaN(value) ? 0 : value;
+};
+
 
 const VideoPlayer = ({ src, type, poster, width, height, controls = true }) => {
 
@@ -58,8 +95,14 @@ const VideoPlayer = ({ src, type, poster, width, height, controls = true }) => {
      getActivityTimer().heartbeat();
      window.timer.start();
         let mytime = videoRef.current.currentTime;
-        let secs = parseFloat(mytime);        
-        let subtitle = window.srtParser.getSRT(secs);
+        let secs = parseFloat(mytime);  
+        let drift = getDrift();
+        let subtitle = null;
+        if (drift != -1) {
+           subtitle = window.srtParser.getSRTIndex(drift-1); 
+        } else {       
+           subtitle = window.srtParser.getSRT(secs);
+        }
         window.subtitle = subtitle;
         const cacheKey = `tokenize_${subtitle}`;
         if (subtitle == null) {
@@ -90,12 +133,18 @@ const VideoPlayer = ({ src, type, poster, width, height, controls = true }) => {
 
     return (
       <div className="video-player">
+        <textarea id="files"></textarea>
+        <input type="text" id="drift"></input>
       Video<input ref={videoName}></input><br></br>
       <button onClick={() => {
         videoRef.current.src = 'https://chinese.eriktamm.com/watchit/'+videoName.current.value + '.webm'
         window.srtParser.reparse('https://chinese.eriktamm.com/watchit/'+videoName.current.value + '.srt');
         window.srtParser.fetchSRT();
       }}>Change</button><br></br>
+      <button onClick={() => {
+        fetchWebmFiles();
+      }}>Get</button><br></br>
+
         <video
           width={width || "640"}
           height={height || "360"}
@@ -153,7 +202,17 @@ const VideoPlayer = ({ src, type, poster, width, height, controls = true }) => {
         videoRef.current.currentTime = videoRef.current.currentTime - 5;
       }}>Back5</button>
       <br></br>
+      <button onClick={() => {
+        document.getElementById("drift").value = getDrift() - 1;
+      }}>S-</button>
+      
+      <button onClick={() => {
+        document.getElementById("drift").value = getDrift() + 1;
+      }}>S+</button>
+      <br></br>
+      
       </div>
+      
     );
   };
   

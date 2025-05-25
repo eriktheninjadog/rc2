@@ -46,6 +46,15 @@ const ImportTextPage = ()=> {
         });
     }
 
+    const importText = async () => {
+        console.log(textarea)
+        let question = textarea.current.value;
+        backEndCall("tokenize_chinese",{"text":question},(result)=>{
+            setTokens(result);
+        },(error)=>{console.log(error)});
+    }
+    
+
     const processText = () => {
         console.log(textarea)
         let question = textarea.current.value;
@@ -67,6 +76,7 @@ const ImportTextPage = ()=> {
             </textarea>
         <br></br>    
         <button onClick={processText}> Ask AI</button>
+        <button onClick={importText}> Import</button>
         <button onClick={importAuth}> Auth</button>
 
         </Container>
