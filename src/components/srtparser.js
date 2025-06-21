@@ -1,6 +1,5 @@
 
 
-
 class SRTParser {
     constructor(url) {
         this.url = url;
@@ -74,6 +73,8 @@ class SRTParser {
         return chosenSubtitle ? chosenSubtitle.index : null;
     }
 
+
+
     getSRT(time) {
         let chosenSubtitle = null;
 
@@ -87,6 +88,33 @@ class SRTParser {
 
         return chosenSubtitle ? chosenSubtitle.text.trim() : null;
     }
+
+    getNextSRT(time) {
+        let chosenSubtitle = null;
+        let idx = 0;
+        for (const subtitle of this.subtitles) {
+            if (subtitle.start <= time) {
+                chosenSubtitle = subtitle;
+                idx++;
+            } else {
+                break;
+            }
+        }
+        return [this.subtitles[idx + 1].start,this.subtitles[idx + 1].end];
+    }
+
+
+    /**
+ * Returns all subtitle text as a single string with newlines between entries
+ * @returns {string} All subtitle text concatenated with newlines
+ */
+    getAllText() {
+        return this.subtitles
+            .map(subtitle => subtitle.text.trim())
+            .filter(text => text)
+            .join('/。\n');
+    }
+
 }
 
 // Usage example:

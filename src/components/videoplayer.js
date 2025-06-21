@@ -6,7 +6,6 @@ import Navigation from "./Navigation";
 
 import { UserContext } from "../App";
 
-import {tokenizeChineseText} from "./backendapi/tokenizer"
 import { tokenizeChinese } from "./backendapi/backendcall";
 
 import React from "react";
@@ -54,7 +53,226 @@ const getDrift = () => {
   return isNaN(value) ? 0 : value;
 };
 
+// Function to create a sequence/loop player
+const createSequencePlayer = (videoRef) => {
+  let startPoint = null;
+  let endPoint = null;
+  let isLooping = false;
 
+  // Function to handle sequence button click
+  const handleSequenceClick = () => {
+    const video = videoRef.current;
+    
+    if (!startPoint) {
+      // First click: set start point
+      startPoint = video.currentTime;
+      return "Start point set";
+    } else if (!endPoint) {
+      // Second click: set end point and start looping
+      endPoint = video.currentTime;
+      
+      // Make sure start is before end
+      if (startPoint > endPoint) {
+        [startPoint, endPoint] = [endPoint, startPoint];
+      }
+      
+      isLooping = true;
+      
+      // Add timeupdate listener to handle looping
+      video.addEventListener('timeupdate', checkTime);
+      return "Looping enabled";
+    } else {
+      // Third click: release the loop
+      releaseLoop();
+      return "Loop released";
+    }
+  };
+
+  // Function to check if video needs to loop back
+  const checkTime = () => {
+    const video = videoRef.current;
+    if (isLooping && video.currentTime >= endPoint) {
+      video.currentTime = startPoint;
+    }
+  };
+
+  // Function to release the loop
+  const releaseLoop = () => {
+    const video = videoRef.current;
+    video.removeEventListener('timeupdate', checkTime);
+    startPoint = null;
+    endPoint = null;
+    isLooping = false;
+  };
+
+  return { handleSequenceClick, releaseLoop };
+};
+
+const VideoPlayer = ({ src, type, poster, width, height, controls = true }) => {
+
+    const [tokens,setTokens] = useState([]);
+    const videoRef = useRef(null);
+    const videoName = useRef(null);
+    const [sequenceStatus, setSequenceStatus] = useState("");
+    const sequencePlayer = useRef(createSequencePlayer(videoRef));
+
+
+    if (window.srtParser == undefined)
+      window.srtParser=new SRTParser("https://chinese.eriktamm.com/watchit/deadringer2.srt");
+    window.srtParser.fetchSRT();
+
+    if (window.timer == undefined)
+      window.timer = new Timer("https://chinese.eriktamm.com/api/addoutputexercise");
+   
+    function formatTime(seconds) {
+      const hours = Math.floor(seconds / 3600);
+      const minutes = Math.floor((seconds % 3600) / 60);
+      
+      const formattedHours = String(hours).padStart(2, '0');
+      const formattedMinutes = String(minutes).padStart(2, '0');
+      
+      return `${formattedHours}:${formattedMinutes}`;
+    }
+
+    window.settokens = (toks) => {
+      console.log('settokens');
+      setTokens(toks);  
+     }
+    
+
+    const showStat=()=>{
+      getTotalOutputTime( total => {
+        getTotalAudioTime( totalaudiotime => {
+          let vid = formatTime(total[0]/1000) +' ' + formatTime(total[1]/1000)  + ' Audio:'+ formatTime(totalaudiotime[0]/1000) +' ' + formatTime(totalaudiotime[1]/1000);
+          document.getElementById("combinedTime").innerHTML = vid;
+        });
+      });
+
+    }
+
+
+    const handleTimeUpdate = (time) => {
+     getActivityTimer().heartbeat();
+     window.timer.start();
+        let mytime = videoRef.current.currentTime;
+        let secs = parseFloat(mytime);  
+        let drift = getDrift();
+        let subtitle = null;
+        if (drift != -1) {
+           subtitle = window.srtParser.getSRTIndex(drift-1); 
+        } else {       
+           subtitle = window.srtParser.getSRT(secs);
+        }
+        window.subtitle = subtitle;
+        const cacheKey = `tokenize_${subtitle}`;
+        if (subtitle == null) {
+          console.log("No SRT");
+          let msg = 'Current play time: '+mytime+' seconds'
+          setTokens([msg]);
+        }
+        else{
+          console.log(subtitle);
+          const cachedTokens = localStorage.getItem(cacheKey);
+            if (cachedTokens) {
+                setTokens(JSON.parse(cachedTokens));
+                return;
+            }
+          
+          tokenizeChinese(subtitle,(result) => {
+            if  (result == null) {
+              console.log("No tokens");
+              setTokens(["no tokens"]);
+            } else {
+              localStorage.setItem(cacheKey, JSON.stringify(result));             
+              setTokens(result);
+            }
+          });
+          setTokens([subtitle]);
+        }
+       };
+
+    return (
+      <div className="video-player">
+        <textarea id="files"></textarea>
+        <input type="text" id="drift"></input>
+      Video<input ref={videoName}></input><br></br>
+      <button onClick={() => {
+        videoRef.current.src = 'https://chinese.eriktamm.com/watchit/'+videoName.current.value + '.webm'
+        window.srtParser.reparse('https://chinese.eriktamm.com/watchit/'+videoName.current.value + '.srt');
+        window.srtParser.fetchSRT();
+      }}>Change</button><br></br>
+      <button onClick={() => {
+        fetchWebmFiles();
+      }}>Get</button><br></br>
+
+        <video
+          width={width || "640"}
+          height={height || "360"}
+          controls={true}
+          poster={poster}
+          onTimeUpdate={handleTimeUpdate}
+          onPlay={()=>{
+            if (getActivityTimer().isRunning() == true) {
+              getActivityTimer().pause();
+            }
+            getActivityTimer().start('listening');
+            }}
+          ref={videoRef}
+          
+        >
+          <source src="https://chinese.eriktamm.com/watchit/deadringer2.webm" type={type || "video/webm"} />
+          Your browser does not support the video tag.
+        </video>
+
+        <IntelligentText settokens={(toks) => {setTokens(toks);}}  tokens={tokens}></IntelligentText>               
+        <div id={"combinedTime"}></div>
+
+        <button onClick={() => {
+          window.timer.start();
+      }}>start</button>
+
+      <button onClick={() => {
+          window.timer.pause();
+      }}>stop</button>
+   
+      <button onClick={() => {
+        backEndCall("ask_nova",{"text":"translate this to english:" + window.subtitle},(result) => {
+          setTokens(result);
+        })
+      }}>translate</button>
+   
+      <button onClick={() => {
+        backEndCall("ask_nova",{"text":"rephrase this to spoken colloqial cantonese:" + window.subtitle},(result) => {
+          setTokens(result);
+        })
+      }}>cant</button>
+      
+      <button onClick={() => {
+        backEndCall("make_c1_examples",{"pattern":"using vocabulary,grammars and set expression from this sentence: "+window.subtitle},(result) => {
+          console.log(result);
+        });
+      }}>Remember</button>
+      <br></br>
+      <button onClick={() => {
+        videoRef.current.currentTime = videoRef.current.currentTime - 1;
+      }}>Back1</button>
+      <br></br>
+
+      <button onClick={() => {
+        videoRef.current.currentTime = videoRef.current.currentTime - 5;
+      }}>Back5</button>
+      <br></br>
+
+      <button onClick={() => {
+        const status = sequencePlayer.current.handleSequenceClick();
+        setSequenceStatus(status);
+      }}>Sequence {sequenceStatus && `(${sequenceStatus})`}</button>
+      
+      </div>
+      
+    );
+  };
+  /*
 const VideoPlayer = ({ src, type, poster, width, height, controls = true }) => {
 
     const [tokens,setTokens] = useState([]);
@@ -216,7 +434,7 @@ const VideoPlayer = ({ src, type, poster, width, height, controls = true }) => {
     );
   };
   
-
+*/
 
 
 export default VideoPlayer;

@@ -1,5 +1,10 @@
 import React, { useState } from 'react';
 
+import { getActivityTimer } from './ActivityTimer';
+import '../App.css'; // Import the CSS file for styling
+
+
+
 const ClozeTest = ({ data }) => {
   const [currentLineIndex, setCurrentLineIndex] = useState(0);
   const [userAnswers, setUserAnswers] = useState(Array(data.answers.length).fill(''));
@@ -8,10 +13,49 @@ const ClozeTest = ({ data }) => {
   const [showCompletionMessage, setShowCompletionMessage] = useState(false);
 
   // Split the text into lines
-  const lines = data.text.split('\n').filter((line) => line.trim() !== '');
+  const lines = data.text.split(/。|，/).filter((line) => line.trim() !== '' && line.includes('[BLANK_'));
+  const totalClozeText = data.text;
+  // Function to find a substring and expand until reaching delimiter characters
+  const findExpandedContext = (text, substring, delimiterChars = '。，.!?', contextWords = 5) => {
+    if (!text || !substring || text.indexOf(substring) === -1) {
+      return null;
+    }
+
+    const startIndex = text.indexOf(substring);
+    const endIndex = startIndex + substring.length;
+    
+    // Find left boundary
+    let leftBoundary = startIndex;
+    for (let i = startIndex - 1; i >= 0; i--) {
+      if (delimiterChars.includes(text[i])) {
+        leftBoundary = i + 1;
+        break;
+      }
+      if (i === 0) {
+        leftBoundary = 0;
+      }
+    }
+    
+    // Find right boundary
+    let rightBoundary = endIndex;
+    for (let i = endIndex; i < text.length; i++) {
+      if (delimiterChars.includes(text[i])) {
+        rightBoundary = i;
+        break;
+      }
+      if (i === text.length - 1) {
+        rightBoundary = text.length;
+      }
+    }
+    
+    return text.substring(leftBoundary, rightBoundary);
+  };
+
 
   // Handle input change for the current line
   const handleInputChange = (e) => {
+    getActivityTimer().heartbeat();
+    
     const answersCopy = [...userAnswers];
     answersCopy[currentLineIndex] = e.target.value;
     setUserAnswers(answersCopy);
@@ -19,9 +63,12 @@ const ClozeTest = ({ data }) => {
 
   // Handle submission of the current line
   const handleSubmit = () => {
+    getActivityTimer().heartbeat();
+    
     const currentAnswer = userAnswers[currentLineIndex];
     const correctAnswer = data.answers[currentLineIndex];
 
+    window.correctAnswer = correctAnswer; // For debugging purposes
     if (currentAnswer === correctAnswer) {
       setIsCorrect(true);
       setShowFeedback(true);
@@ -42,8 +89,10 @@ const ClozeTest = ({ data }) => {
   };
 
   // Generate JSX for the current line
-  const currentLine = lines[currentLineIndex];
+  let currentLine = lines[currentLineIndex];
+  currentLine = findExpandedContext(totalClozeText, currentLine, '。.!?');
   const lineParts = currentLine.split(/(\[BLANK_\d+\])/);
+
   const lineJSX = lineParts.map((part, index) => {
     if (part.startsWith('[BLANK_')) {
       return (
@@ -74,9 +123,12 @@ const ClozeTest = ({ data }) => {
         Submit
       </button>
 
-      {showFeedback && (
+      {showFeedback && (  
+        <div>
+          {window.correctAnswer}
         <div className={`feedback ${isCorrect ? 'correct' : 'incorrect'}`}>
           {isCorrect ? '✅ Correct!' : '❌ Incorrect. Try again!'}
+        </div>
         </div>
       )}
 

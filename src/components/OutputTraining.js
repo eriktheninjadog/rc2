@@ -17,23 +17,112 @@ import {addSentence,removeAudio,addListenedTo,addMP3ToServer,getArticleAudioExam
 
 import { addMP3ToCache,playMP3background,playTextInBackground } from './mp3lib';
 
-import { playEnglishTranslationAndroid } from './androidspeech';
-import { playEnglishTranslationChrome } from './chromespeech';
-import { isAndroidWebView,isChromebrowser } from './browserdetect';
-import { playTone } from './soundlib';
 
-import { Timer } from "./backendapi/timer";
 
 import { ActivityTimeManager } from "./ActivityManager";
 import { getActivityTimer } from "./ActivityTimer";
+import { set } from "local-storage";
 
 
 const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-const mic = new SpeechRecognition();
+
+
+const createSequencePlayer = (audioRef) => {
+  let startPoint = null;
+  let endPoint = null;
+  let isLooping = false;
+
+  // Function to handle sequence button click
+  const handleSequenceClick = () => {
+    const audio = audioRef.current;
+    
+    if (!startPoint) {
+      // First click: set start point
+      startPoint = audio.currentTime;
+      return "Start point set";
+    } else if (!endPoint) {
+      // Second click: set end point and start looping
+      endPoint = audio.currentTime;
+      
+      // Make sure start is before end
+      if (startPoint > endPoint) {
+        [startPoint, endPoint] = [endPoint, startPoint];
+      }
+      
+      isLooping = true;
+      
+      // Add timeupdate listener to handle looping
+      audio.addEventListener('timeupdate', checkTime);
+      return "Looping enabled";
+    } else {
+      // Third click: release the loop
+      releaseLoop();
+      return "Loop released";
+    }
+  };
+
+  // Function to check if video needs to loop back
+  const checkTime = () => {
+    const audio = audioRef.current;
+    if (isLooping && audio.currentTime >= endPoint) {
+      audio.currentTime = startPoint;
+    }
+  };
+
+  // Function to manually set loop points
+  const setLoopPoints = (start, end) => {
+    // Validate the inputs
+    if (typeof start !== 'number' || typeof end !== 'number') {
+      console.error('Start and end points must be numbers');
+      return false;
+    }
+    
+    if (start < 0 || end < 0) {
+      console.error('Time points cannot be negative');
+      return false;
+    }
+    
+    if (start >= end) {
+      console.error('Start time must be less than end time');
+      return false;
+    }
+    
+    // Set the loop points
+    startPoint = start;
+    endPoint = end;
+    isLooping = true;
+    
+    // Add timeupdate listener if it's not already added
+    const audio = audioRef.current;
+    audio.removeEventListener('timeupdate', checkTime); // Remove first to avoid duplicates
+    audio.addEventListener('timeupdate', checkTime);
+    
+    return true;
+  };
+
+  // Function to release the loop
+  const releaseLoop = () => {
+    const audio = audioRef.current;
+    audio.removeEventListener('timeupdate', checkTime);
+    startPoint = null;
+    endPoint = null;
+    isLooping = false;
+  };
+
+  return { handleSequenceClick, releaseLoop,setLoopPoints };
+};
+
 
 const OutputTraining = () => {
 
 
+  const audioRef = useRef(null);
+
+
+  const sequencePlayer = useRef(createSequencePlayer(audioRef));
+  const [sequenceStatus, setSequenceStatus] = useState("");
+      
+  
 
   const [currentFile,setCurrentFile] = useState('');
 
@@ -142,6 +231,36 @@ const OutputTraining = () => {
       }
       );
     };
+
+
+    const lookupAll = () => {
+      let theone = window.chosentoken;
+      // Create a string by combining all tokens
+      let str = tokens.join('');
+      audioRef.current.pause();
+      callPoeWithCallback(-1,"Explain this sentence,grammar and vocab using Cantonese. Include English translation between <enspeak>" + ' : ' + str,'Claude-3-Opus','Claude-3-Opus',result=>{
+        let txt = '';
+        let tkns = result[3];
+        // set the text to be spoken
+          for (var i=0;i< tkns.length;i++) {
+              txt = txt + tkns[i];
+          }
+          tokenizeChinese(txt, (result) => {
+            if (result == null) {
+              console.log("No tokens");
+              setTokens(["no tokens"]);
+            } else {
+              setTokens(result);
+            }
+          });        
+//        window.displayDialog(str,txt);
+      },
+      error=>{
+        console.log(error);
+      }
+      );
+    };
+
     
     const [state, setState] = useState('state1');
     const [question,setQuestion] = useState('This is the sentence');
@@ -159,7 +278,6 @@ const OutputTraining = () => {
     const addStuffArea = useRef(null);
     
 
-    const audioRef = useRef(null);
 
     const [playbackRate, setPlaybackRate] = useState(1);
     const handleSpeedChange = (speed) => {
@@ -174,10 +292,6 @@ const OutputTraining = () => {
       goBack(5);  
     }
 
-    window.englishEvent = () => {
-      console.log('englishEvent');
-      englishVersion();
-    }
 
     window.startEvent = () => {
       console.log('startEvent');
@@ -228,7 +342,7 @@ const OutputTraining = () => {
         window.clearChinese = clearChinese;
     } 
 
-    const addSentence = async () => {
+    const magicLookup = async () => {
       let selection = window.getSelection().toString();
       if (selection.length === 0) {
       
@@ -566,14 +680,16 @@ const OutputTraining = () => {
       window.currentSentences = result['tokens'];
       setTokens(result['tokens']);
       setExtendedTokens(result['extendedtokens']);
-
+            
+      if (result['srtpath'] != null)
+      {
+        const audioBasename = result['filepath'].split('/').pop().replace(/\.[^/.]+$/, '');
+        window.srtParser=new SRTParser("https://chinese.eriktamm.com/watchit/"+ audioBasename +".srt");
+        window.srtParser.fetchSRT();
+      } else {
+        window.srtParser = null;
+      }
       audioRef.current.src = 'mp3/' +result['filepath'];
-
-      // Extract the filename (basename) without extension
-      const audioBasename = result['filepath'].split('/').pop().replace(/\.[^/.]+$/, '');
-      console.log('Audio basename:', audioBasename);
-      window.srtParser=new SRTParser("https://chinese.eriktamm.com/watchit/"+ audioBasename +".srt");
-      window.srtParser.fetchSRT();      
       setState('statistics');
     });
   }
@@ -625,11 +741,6 @@ const OutputTraining = () => {
       }
     }
 
-    for (let i=0;i<engKeys.length;i++) {
-      if (key == engKeys[i]) {
-        englishVersion();
-      }
-    }
 
     for (let i=0;i<startKeys.length;i++) {
       if (key == startKeys[i]) {
@@ -653,10 +764,6 @@ const OutputTraining = () => {
     goBack(5);
   }
 
-  window.englishEvent = ()=> {
-    console.log('englishEvent');
-    englishVersion();
-  }
 
 
   const setMark = (event) => {
@@ -671,8 +778,6 @@ const OutputTraining = () => {
     }
   }
 
-  if (window.timer == undefined)
-    window.timer  = new Timer("https://chinese.eriktamm.com/api/addoutputexercise")
 
 
   const onAudioEnded = (event) => {
@@ -723,15 +828,6 @@ const OutputTraining = () => {
   }
 
 
-  const englishVersion = () => {
-    if (window.ignoreEnglish)
-      playTone(440,0.1,0.1);
-    else
-      playTone(660,0.1,0.1);
-    window.ignoreEnglish = !window.ignoreEnglish;
-    audioRef.current.currentTime = window.lastSentenceStartTime;
-    audioRef.current.play();
-  }
 
   
   const calculateTokenFromTime = (currentTime,totalTime) => {
@@ -821,11 +917,11 @@ const OutputTraining = () => {
          };
 
   const handleTimeUpdate = (event) => {
+    getActivityTimer().heartbeat();
     let now = Date.now();
-
-    if (window.srtParser.subtitles != null && window.srtParser.subtitles.length > 0) {
+    if (window.srtParser !==  null) {
       handleSRTTimeUpdate(event.target.currentTime);
-    return;
+      return;
     }
 
     window.currentPlayTime  = event.target.currentTime;
@@ -886,6 +982,18 @@ const OutputTraining = () => {
   audioRef.current.currentTime = audioRef.current.currentTime - (amount);
  };
 
+ window.settokens = (toks) => {
+  console.log('settokens');
+  setTokens(toks);  
+ }
+
+ const moveToNextSub = ()=> {
+  //sequencePlayer.current.handleSequenceClick
+  let times = window.srtParser.getNextSRT(audioRef.current.currentTime);
+  let newtime = times[0];
+  sequencePlayer.current.setLoopPoints(newtime-0.5, times[1]+0.5); 
+  audioRef.current.currentTime = newtime;
+ }
 
 
   return (
@@ -938,7 +1046,7 @@ const OutputTraining = () => {
                 Read
               </label>
               <p>{audioRef.current==null?"none":audioRef.current.src}</p>
-              <IntelligentText tokens={tokens} keyhandler={mykeyhandler}></IntelligentText> 
+              <IntelligentText settokens={(toks) => {setTokens(toks);}} tokens={tokens} keyhandler={mykeyhandler}></IntelligentText> 
                 </div>
                 <div class="form-group">                
                 <label for="sizeid">Size</label><input id="sizeid" type="text" size={3} value={chosenNumber} maxLength={2} onChange={(event)=>{setChosenNumber(event.target.value);
@@ -1066,8 +1174,7 @@ const OutputTraining = () => {
       l<input type="checkbox"  id="loopCheckbox"></input>
       n<input type="checkbox" id="nextCheckbox" checked></input>
       <br></br>
-      <button onClick={() => addSentence()}>add</button>
-      <button onClick={() => threeExamples()}>3</button>   
+      <button onClick={() => magicLookup()}>*</button>
       <button onClick={() => translatePage()}>Tran</button>   
       <button onClick={lookupSentence}>se?</button>
       <button onClick={lookupMark}>se!</button>
@@ -1075,13 +1182,10 @@ const OutputTraining = () => {
         <button onClick={() => handleSpeedChange(0.5)}>0.5x</button>
         <button onClick={() => handleSpeedChange(1)}>1x</button>
         <button onClick={() => refreshAudio()}>Ref</button>
+        <button onClick={() => refreshAudio()}>Ta</button>
+        
         <br></br>
-        <button onClick={() => setMark()}>M</button>
-        <button onClick={() => goMark()}>G</button>
         <button onClick={() => goBack(5)}>{"<<<"}</button>
-        <button onClick={() => englishVersion()}>{"eng"}</button>        
-        <button onClick={() => startManualTime()}>M sta</button>
-        <button onClick={() => stopManualTime()}>M sto</button>
         <button onClick={() => {
             let file = audioRef.current.src;
             let fileparts = file.split('/');
@@ -1089,6 +1193,16 @@ const OutputTraining = () => {
             removeAudio(file);
         }
         }>KILL</button><br></br>
+              <button onClick={() => {
+        const status = sequencePlayer.current.handleSequenceClick();
+        setSequenceStatus(status);
+      }}>Sequence {sequenceStatus && `(${sequenceStatus})`}</button>
+      <button onClick={lookupAll}>lookupall</button>
+      <button onClick={moveToNextSub}>moveToNextSub</button>
+    
+
+
+      
               <div>          
       </div>
       </div>

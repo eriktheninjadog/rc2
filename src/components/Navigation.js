@@ -27,8 +27,8 @@ const Navigation = () =>
           <button onClick={() => stopManualTime()}>M sto</button>
         
               <Nav.Link href="/import">Import</Nav.Link>
-              <Nav.Link href="/texts">Texts</Nav.Link>
-              <Nav.Link href="/reader">Reader</Nav.Link>
+              <Nav.Link href="/audioadventure">AudioAdventure</Nav.Link>
+              <Nav.Link href="/adventure">Adventure</Nav.Link>
               <Nav.Link href="/coach">Coach</Nav.Link>
               <Nav.Link href="/video">Video</Nav.Link>
               <Nav.Link href="/output">Output</Nav.Link>

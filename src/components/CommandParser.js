@@ -7,6 +7,10 @@ import { peekInterestFromStack } from './backendapi/remotestack';
 
 import { getInterestFromStack } from './backendapi/remotestack';
 import { addInterestToStack } from './backendapi/remotestack';
+import { tokenizeChinese } from './backendapi/backendcall';
+
+import { SRTParser } from "./srtparser";
+
 
 const CommandParser = () => {
     const [input, setInput] = useState('');
@@ -16,13 +20,46 @@ const CommandParser = () => {
         setInput(e.target.value);
     };
 
-    const parseCommand = () => {
+    const  parseCommand = async () => {
         const args = input.trim().split(/\s+/);
         const command = args[0].toLowerCase();
         const params = args.slice(1);
         let stack = new GeneralStack();
         try {
             switch (command) {
+                case 'copysrt':
+                    {
+                        let parser = window.srtParser;
+                        if (parser!=null) {
+                            let txt = parser.getAllText();
+                            navigator.clipboard.writeText(txt).catch(err => {
+                                console.error('Failed to copy to clipboard:', err);
+                            });
+                        }
+                    };
+                    break;
+
+                case 'pastetokens':
+                    {
+                        navigator.clipboard.readText()
+                            .then(clipText => {
+                                // Store clipboard text in pastetxt variable
+                                const pastetxt = clipText;
+                                tokenizeChinese(pastetxt, (result) => {
+                                        if (result == null) {
+                                            console.log("No tokens");
+                                        } else {
+                                            window.settokens(result);
+                                        }
+                                        });
+                                // Tokenize the clipboard text
+                            }).then(() => {
+                                setOutput('Tokens pasted from clipboard');
+                            }
+                        );
+                    }
+                    break;
+
                 case 'push':
                     if (params.length < 1) {
                         throw new Error('Push command requires at least one argument');

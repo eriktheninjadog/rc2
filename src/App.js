@@ -6,6 +6,7 @@ import TextList from './components/TextList';
 import React from 'react';
 import { useState } from 'react';
 import RCDocumentStack from './datacomponents/RCDocumentStack';
+import AudioAdventure from './components/AudioAdventure';
 
 import VideoPlayer from './components/videoplayer';
 import { useEffect } from 'react';
@@ -25,6 +26,8 @@ import OutputTraining from './components/OutputTraining';
 import StackedDocumentReader from './components/StackedDocumentReader';
 import FlashCard from './components/FlashCard';
 import EditDictionary from './components/EditDictionary';
+import Adventure from './components/Adventure';
+
 
 import {time_loop} from './components/timedfunctions'
 import { registerEventListener } from './components/eventsystem/EventMarket';
@@ -66,55 +69,6 @@ const App = () => {
     }
   );
 
-  const localmessageEventSource = new EventSource('http://localhost:9123');
-  window.localmesource = localmessageEventSource; 
-  localmessageEventSource.addEventListener('message', (event) => {
-    console.log('   ' + event.data);
-    if (event.data == 'repeat') {
-      if (window.repeatEvent != undefined && window.repeatEvent != null) {
-        window.repeatEvent();
-      } 
-    }
-
-    if (event.data == 'english') {
-      if (window.englishEvent != undefined && window.englishEvent != null) {
-        window.englishEvent();
-      } 
-    }
-
-    if (event.data == 'start') {
-      if (window.startEvent != undefined && window.startEvent != null) {
-        window.startEvent();
-      } 
-    }
-
-    if (event.data == 'mark') {
-      if (window.markEvent != undefined && window.markEvent != null) {
-        window.markEvent();
-      } 
-    }
-
-    if (event.data == 'go') {
-      if (window.goEvent != undefined && window.goEvent != null) {
-        window.goEvent();
-      } 
-    }
-
-    if (event.data == 'lookupsentence') {
-      if (window.lookupSentenceEvent != undefined && window.lookupSentenceEvent != null) {
-        window.lookupSentenceEvent();
-      } 
-    }
-
-  });
- 
-  localmessageEventSource.addEventListener('open', (event) => {
-    console.log('eventsource is opened   ');
-  });
- 
-  localmessageEventSource.addEventListener('error', (event) => {
-    console.log('eventsource is error   ');
-  });
  
   return (
     <RecoilRoot>
@@ -123,8 +77,8 @@ const App = () => {
     <Routes>
         <Route path="" element={<ImportTextPage />} />
         <Route path="/import" element={<ImportTextPage />} />
-        <Route path="/texts" element={<TextList />} />
-        <Route path="/reader" element={<StackedDocumentReader />} />
+        <Route path="/audioadventure" element={<AudioAdventure />} />
+        <Route path="/adventure" element={<Adventure />} />
         <Route path="/coach" element={<CoachComponent />} />
         <Route path="/video" element={<VideoPlayer/>} />
         <Route path="/editdictionary" element={<EditDictionary />} />

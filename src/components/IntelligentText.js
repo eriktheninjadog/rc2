@@ -7,9 +7,9 @@ import React, { startTransition, useState } from 'react';
 import FloatingButton from './floatingbutton';
 import CommandParser from './CommandParser';
 import ClozeTest from './ClozeTest';
+import {WordListManager} from './backendapi/WordlistManager'; 
 
-
-import { callPoeWithCallback, backEndCall,addlookup,createWordList, amazonTranslateFromChinese, dictionaryLookup,addOutputExercise } from "./backendapi/backendcall";
+import { tokenizeChinese,callPoeWithCallback, backEndCall,addlookup,createWordList, amazonTranslateFromChinese, dictionaryLookup,addOutputExercise } from "./backendapi/backendcall";
 
 
 import { Row,Col,Button,Container } from "react-bootstrap";
@@ -138,6 +138,108 @@ const IntelligentText = (props)=> {
     const [clozeData, setClozeData] = useState(null);
 
 
+        const magicLookup = async () => {
+          let selection = window.getSelection().toString();
+          if (selection.length === 0) {
+          
+            // If no text is selected, try to get text from clipboard
+            try {
+              const clipboardText = await navigator.clipboard.readText();
+              if (clipboardText) {
+                // Use the clipboard text as selection
+                selection = clipboardText;
+              } else {
+                // Handle empty clipboard case
+                console.log("No text selected and clipboard is empty");
+                return;
+              }
+            } catch (err) {
+              console.error("Failed to read clipboard contents: ", err);
+              return;
+            }
+          }
+    
+    
+          callPoeWithCallback(-1,"Explain this sentence,grammar and vocab using English" + ' : ' + selection,'Claude-3-Opus','Claude-3-Opus',result=>{
+            console.log(result);
+    
+            let txt = '';
+            let tkns = result[3];
+            // set the text to be spoken
+              for (var i=0;i< tkns.length;i++) {
+                if (tkns[i] == '\n') {
+                  txt= txt + '<br/>';
+                } else
+                  txt = txt + tkns[i];
+              }   
+            window.displayDialog(selection,txt);
+          },
+          error=>{
+            console.log(error);
+          }
+          );
+        }
+    
+
+    const askClaude = (question, onSuccess, onError) => {
+      fetch('https://chinese.eriktamm.com/api/ask_claude', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          question: question
+        })
+      })
+      .then(response => {
+        if (!response.ok) {
+          throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+        return response.json();
+      })
+      .then(data => {
+        if (onSuccess) onSuccess(data.result);
+      })
+      .catch(error => {
+        console.error('Error asking Claude:', error);
+        if (onError) onError(error);
+      });
+    };
+
+    const askClaudeAndAppend = (question) => {
+      askClaude(
+        question,
+        (result) => {
+          appendText(result);
+        },
+        (error) => {
+          console.error('Error asking Claude:', error);
+          appendText('Error getting response from Claude.');
+        }
+      );
+    };
+
+
+    const appendText = (newText) => {
+      tokenizeChinese(newText,(result) => {
+        if  (result == null) {
+          console.log("No tokens");
+          //setTokens(["no tokens"]);
+        } else {
+          appendTokens(result);
+        }
+      });
+    }
+
+    const appendTokens = (newTokens) => {
+      if (!Array.isArray(newTokens)) {
+        console.error('appendTokens expects an array of strings');
+        return;
+      }
+      
+      const updatedTokens = [...props.tokens, ...newTokens];
+      window.settokens(updatedTokens);
+    };
     
     const innerMenu = (event) => {
         
@@ -223,6 +325,22 @@ const IntelligentText = (props)=> {
         setShow(true);
     }
 
+
+    const addToNextAdventure = () => {
+      let chinese = window.lastWordChinese;
+      alert(chinese);
+      let wlm = new WordListManager();
+      wlm.addWord('nextadventure',chinese)
+        .then(result => {
+          console.log('Added to next adventure: ' + chinese);
+          alert('Added to next adventure: ' + chinese);
+        })
+        .catch(error => {
+          console.error('Error adding to next adventure:', error);
+          alert('Error adding to next adventure: ' + error.message);
+        });
+    }
+
     const render = (addonly) => {
       let txt ='';
       for (let i=0;i<props.tokens.length;i++) {
@@ -246,7 +364,36 @@ const IntelligentText = (props)=> {
     }
 
     const onMyKeyDown = (event) => {
-        props.keyhandler(event.key);
+      getActivityTimer().heartbeat();
+      props.keyhandler(event.key);
+    }
+
+    const cloze = async () => {
+      let txt = '';
+      for (let i=0;i<props.tokens.length;i++) {
+        let token = props.tokens[i];
+        if (token == '~') {
+          continue;
+        }
+        if (token == '\n') {
+          txt += ' ';
+          continue;
+        }
+        txt += token;
+      }
+      if (txt.length < 200) { 
+        txt = window.srtParser.getAllText();
+      }
+      console.log('cloze ' + txt);
+      backEndCall("generate_cloze",{"text":txt},(result) => {
+        console.log('cloze data\n' + result);
+        result = result.replaceAll('\'','"');
+        let data = JSON.parse(result);
+        setClozeData(data);
+      }
+      ,(error) => {
+        console.log('error generating cloze ' + error);
+      });
     }
 
     const handleClick = (event) => {
@@ -259,7 +406,7 @@ const IntelligentText = (props)=> {
       let word = modalheading;
       navigator.clipboard.writeText(word);
       if (word.length > 10) {
-        return;    
+        return;
       }
       saveWordToList(word);
       dictionaryLookup(modalheading,result => {
@@ -306,6 +453,126 @@ const IntelligentText = (props)=> {
 
             <button onClick={()=>{render(false);}}>render</button>
             <button onClick={()=>{render(true);}}>add to render</button>
+            <button onClick={()=>{cloze();}}>cloze</button>
+            <div className="ask-claude-container" style={{ marginBottom: '15px' }}>
+              <input 
+                type="text" 
+                id="claude-question"
+                placeholder="Ask Claude a question (use # to reference full text)"
+                style={{ 
+                  width: '80%', 
+                  padding: '8px',
+                  marginRight: '10px',
+                  borderRadius: '4px',
+                  border: '1px solid #ccc' 
+                }}
+              />
+              <button 
+                onClick={() => {
+                  const inputElem = document.getElementById('claude-question');
+                  const question = inputElem.value;
+                  
+                  if (!question.trim()) return;
+                  
+                  let fullText = '';
+                  for (let i = 0; i < props.tokens.length; i++) {
+                    if (props.tokens[i] !== '~' && props.tokens[i] !== '\n') {
+                      fullText += props.tokens[i];
+                    } else if (props.tokens[i] === '\n') {
+                      fullText += ' ';
+                    }
+                  }
+                  
+                  const processedQuestion = question.includes('#') 
+                    ? question.replace(/#/g, fullText)
+                    : question;
+                    
+                  askClaudeAndAppend(processedQuestion + "\nPlease answer in spoken Cantonese using traditional characters.");
+                  inputElem.value = '';
+                }}
+                style={{
+                  padding: '8px 16px',
+                  backgroundColor: '#4285f4',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: 'pointer'
+                }}
+              >
+                Ask Claude
+              </button>
+              <select 
+                onChange={(e) => {
+
+                  let fullText = '';
+                  for (let i = 0; i < props.tokens.length; i++) {
+                    if (props.tokens[i] !== '~' && props.tokens[i] !== '\n') {
+                      fullText += props.tokens[i];
+                    } else if (props.tokens[i] === '\n') {
+                      fullText += ' ';
+                    }
+                  }
+
+                  const index = parseInt(e.target.value);
+                  const prompts = [
+                    "Translate this text to simple Cantonese,",
+                    "Explain this text in Cantonese",
+                    "Give examples similar to this text in Cantonese",
+                    "Create a dialogue based on this text in Cantonese",
+                    "Summarize this text in Cantonese",
+                    `"Act as a language tutor analyzing the following short text for language learners. Extract and list the most important grammar points (e.g., verb tenses, sentence structures, prepositions, etc.) and key vocabulary (e.g., high-frequency words, challenging terms, or contextually essential phrases) from the text below.
+For each grammar point:
+
+
+Name the structure or rule.
+Provide a brief explanation of its use.
+Include an example from the text.
+
+For vocabulary:
+List the word/phrase, its definition, and part of speech.
+Highlight any cultural or contextual nuances if applicable.
+Structure your response clearly and concisely, prioritizing elements that are most relevant for learners at a [specify level, e.g., beginner/intermediate] level.
+
+Text: [Insert text here]
+
+Example Response Format:
+Grammar Points:
+
+[Structure Name]: [Explanation]. Example: "[Sentence from text]".
+
+...
+
+Key Vocabulary:
+[Word/Phrase]: [Part of speech]. [Definition]. Example: "[Sentence from text]".
+
+...
+
+Focus on clarity and usefulness for learners!"
+                    
+                    `
+                  ];
+                  
+                  if (index >= 0 && index < prompts.length) {
+                    askClaudeAndAppend(prompts[index] + "\n" +fullText);
+                  }
+                }}
+                style={{
+                  marginLeft: '10px',
+                  padding: '8px',
+                  borderRadius: '4px',
+                  border: '1px solid #ccc'
+                }}
+              >
+                <option value="" disabled selected>Quick prompts</option>
+                <option value="0">Translate</option>
+                <option value="1">Explain</option>
+                <option value="2">Examples</option>
+                <option value="3">Dialogue</option>
+                <option value="4">Summarize</option>
+                <option value="5">Points</option>
+              </select>
+            </div>
+            
             {clozeData && <ClozeTest data={clozeData} />}
 
 
@@ -318,25 +585,9 @@ const IntelligentText = (props)=> {
             <Button variant="secondary" onClick={handleClose}>Close </Button>
             <a href={"/editdictionary?term="+modalheading}>edit</a>
             <Button variant="secondary" onClick={()=>{addSentenceFromDialog();}}>Add Sent </Button>
-            <Button variant="secondary" onClick={()=>{
-                let exampleChunk = modalheading;
-                const selection = window.getSelection();
-                const isEmpty = selection.toString() === '';
-                if (!isEmpty) {
-                    exampleChunk = selection.toString();                    
-                }
-                createexamples("Create 3 sentences in C1 level Cantonese containing this chunk:"+exampleChunk + ". Return these together with english translation in json format like this: [{\"english\":ENGLISH_SENTENCE,\"chinese\":CANTONESE_TRANSLATION}].Only respond with the json structure.","A1",result=>{
-                let baba = result;                
-                let gdb = window.gamedatabase;   
-                if (gdb !== undefined ) {
-                for(var i =0 ; i < baba.length;i++) {
-                    gdb.push( {tokens:baba[i]['chinese'],english:baba[i]['english'] }   )
-                    }
-                    window.gamedatabase = gdb;
-                }
+            <Button onClick={() => magicLookup()}>*</Button>
+            <Button onClick={() => addToNextAdventure()}>+</Button>
 
-            }); }}>CExample </Button>
-            <Button variant="secondary" onClick={()=>{addToExamplesFromDialog(modalheading,modalcontent)}}>addit</Button> 
             </Modal.Footer>
             </Modal>
             </div>

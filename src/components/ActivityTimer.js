@@ -54,15 +54,14 @@ class ActivityTimer {
                 try {
                     await this.activityManager.addTimeToActivity(
                         this.activityName, 
-                        60000 // 1 minute
+                        30000 // 1 minute
                     );
-                    console.log(`1 minute added to activity: ${this.activityName}`);
+                    console.log(`30 seconds minute added to activity: ${this.activityName}`);
                 } catch (error) {
                     console.error('Automatic time addition failed:', error);
                 }
             }
-        }, 60000); // Every minute
-
+        }, 30000); // Every minute
         console.log(`ActivityTimer started for activity: ${this.activityName}`);
     }
 
@@ -75,6 +74,8 @@ class ActivityTimer {
 
     heartbeat() {
         if (this.isPaused) {
+            this.start(this.activityName);
+            console.log(`Heartbeat started for activity: ${this.activityName}`);
             return;
         }
         

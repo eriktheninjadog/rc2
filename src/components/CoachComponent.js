@@ -593,6 +593,11 @@ function formatTime(milliseconds) {
 
 const pinyinLookup = new PinyinLookup('input');
 
+window.settokens = (toks) => {
+    console.log('settokens');
+    setTokens(toks);  
+   }
+
 
 // Initialize session on page load
 if (window.sessionId == null)
@@ -610,7 +615,7 @@ if (window.sessionId == null)
         <h1>CoachComponent</h1>
         <div id="chat"></div>
 
-        <IntelligentText tokens={tokens} keyhandler={mykeyhandler}></IntelligentText> 
+        <IntelligentText settoken={(toks) => {setTokens(toks);}} tokens={tokens} keyhandler={mykeyhandler}></IntelligentText> 
         <button onClick={() => { document.getElementById('input').value = document.getElementById('system_prompt').value; }}>
                Sys-inp
         </button>
@@ -650,7 +655,7 @@ if (window.sessionId == null)
         
         <label>System Prompt: 
         <textarea type="text" id="system_prompt" onChange={() =>{updateSystemPrompt(document.getElementById('system_prompt').value)}}  
-            defaultValue="You are a Cantonese teacher. You will use only simple Cantonese to communicate with the user, using traditional Characters. Correct the user if the make mistakes." style={ {width:"300px"}}></textarea>
+            defaultValue="You are a Cantonese tutor roleplaying a daily scenario. Use spoken Cantonese with traditional characters. Give the user a task which he must complete by asking or answering questions. Correct the user if he responds with grammar or vocabulary that wouldn't be used in this context." style={ {width:"300px"}}></textarea>
         </label>
         </div>
         <br></br>
