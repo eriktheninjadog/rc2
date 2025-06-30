@@ -58,6 +58,32 @@ class WordListManager {
         }
     }
 
+
+    async deleteWord(name,word) {
+        try {
+            const response = await fetch(this.baseUrl + this.endpoint, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    name: name,
+                    word: word,
+                    command: 'deleteWord'
+                })
+            });
+
+            const data = await response.json();
+            if (data.error) {
+                throw new Error(data.error);
+            }
+            return data.result;
+        } catch (error) {
+            console.error('Error deleting list:', error);
+            throw error;
+        }
+    }
+
     // Delete an entire list
     async deleteList(name) {
         try {

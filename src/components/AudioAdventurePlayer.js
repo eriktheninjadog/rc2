@@ -4,10 +4,7 @@ import { Button,Container } from 'react-bootstrap';
 import { set } from 'local-storage';
 import md5 from 'js-md5';
 import { useCallback } from 'react';
-
-
-// Audio adventure player component
-// This version removes all voice recognition functionality
+import { use } from 'react';
 
 
 const AudioAdventurePlayer = () => {
@@ -22,7 +19,7 @@ const AudioAdventurePlayer = () => {
     const [imagefile,setImageFile] = useState(null)
     const [autoplay,setAutoplay] = useState(false)
     
-    const audioRef = useRef(null);
+    const audioPlayerRef =useRef(null);
 
     // Initialize the adventure
     useEffect(() => {
@@ -63,14 +60,14 @@ const AudioAdventurePlayer = () => {
         console.log("Playing audio for node:", nextNode);
         if (!currentNode || !currentNode.text_audio) return;
         
-        if (audioRef.current) {
-            audioRef.current.pause();
+        if (audioPlayerRef.current) {
+            audioPlayerRef.current.pause();
         }
         
         console.log(`Playing audio for node: ${nextNode.id} - ${nextNode.text} using file: ${nextNode.text_audio}`);
         // Create a new Audio object for the current node's audio
-        audioRef.current = new Audio(`/audioadventures/${nextNode.text_audio}`);
-        audioRef.current.onended = () => {
+        audioPlayerRef.current.src = `/audioadventures/${nextNode.text_audio}`;
+        audioPlayerRef.current.onended = () => {
             if (!currentNode.isEnd) {
                 playChoicesAudio(nextNode);
             } else {
@@ -78,7 +75,7 @@ const AudioAdventurePlayer = () => {
             }
         };
         setTimeout(() => {
-            audioRef.current.play();            
+            audioPlayerRef.current.play();            
         }, 500);
     };
 
@@ -95,6 +92,18 @@ const AudioAdventurePlayer = () => {
             return;
         }
         const playNextChoice = (index) => {
+            if (!theNode || !theNode.choices || index >= theNode.choices.length) 
+            {
+                if ((autoplay) && !theNode.isEnd) {
+                    console.log("No more choices to play, autoplay is enabled, selecting a random choice");
+                    // Automatically select a random choice if autoplay is enabled
+                    const randomChoiceIndex = getRandomChoice(theNode.choices);
+                        if (randomChoiceIndex !== -1) {
+                        selectChoice(theNode,randomChoiceIndex);
+                    }
+                }
+                return;
+            }
             if (index >= theNode.choices.length) {
                 if ((autoplay) && !theNode.isEnd) {
                     // Automatically select a random choice if autoplay is enabled
@@ -113,9 +122,9 @@ const AudioAdventurePlayer = () => {
                 console.warn(`No audio file for choice ${index} in node ${theNode.id}`);
                 return;
             }
-            const choiceAudio = new Audio(`/audioadventures/${choice.text_audio}`);
-            choiceAudio.onended = () => playNextChoice(index + 1);
-            choiceAudio.play();
+            audioPlayerRef.current.src = `/audioadventures/${choice.text_audio}`;
+            audioPlayerRef.current.onended = () => playNextChoice(index + 1);
+            audioPlayerRef.current.play();
         };
         
         playNextChoice(0);
@@ -125,8 +134,8 @@ const AudioAdventurePlayer = () => {
     const playEndingAudio = (nextNode) => {
         if (!nextNode || !nextNode.endingMessage_audio) return;
         
-        const endingAudio = new Audio(`/audioadventures/${nextNode.endingMessage_audio}`);
-        endingAudio.onended = () => {
+        audioPlayerRef.current.src = `/audioadventures/${nextNode.endingMessage_audio}`;
+        audioPlayerRef.current.onended = () => {
             setGameOver(true);
             if (autoplay) {
                 // Automatically reset the game if autoplay is enabled
@@ -137,7 +146,7 @@ const AudioAdventurePlayer = () => {
 
             }
         };
-        endingAudio.play();
+        audioPlayerRef.current.play();
     };
 
     // Handle choice selection
@@ -166,8 +175,8 @@ const AudioAdventurePlayer = () => {
     // Start/stop the game
     const toggleGame = () => {
         if (isPlaying) {
-            if (audioRef.current) {
-                audioRef.current.pause();
+            if (audioPlayerRef.current) {
+                audioPlayerRef.current.pause();
             }
             setIsListening(false);
         } else {
@@ -180,8 +189,8 @@ const AudioAdventurePlayer = () => {
 
     // Reset the game
     const resetGame = () => {
-        if (audioRef.current) {
-            audioRef.current.pause();
+        if (audioPlayerRef.current) {
+            audioPlayerRef.current.pause();
         }
         setCurrentNode(story.startNode);
         setGameOver(false);
@@ -261,7 +270,7 @@ const AudioAdventurePlayer = () => {
     return (
         <div className="audio-adventure">
             <h1>{story?.title || "Audio Adventure"}</h1>
-            
+            <audio controls  ref={audioPlayerRef} muted={true}/>
             <div className="controls">
                 <button onClick={toggleGame}>
                     {isPlaying ? "Pause Adventure" : "Start Adventure"}

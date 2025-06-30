@@ -32,6 +32,8 @@ const Navigation = () =>
               <Nav.Link href="/coach">Coach</Nav.Link>
               <Nav.Link href="/video">Video</Nav.Link>
               <Nav.Link href="/output">Output</Nav.Link>
+              <Nav.Link href="/flashcard">flash</Nav.Link>
+
         </Container>
       </Navbar>
     );

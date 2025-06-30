@@ -27,6 +27,7 @@ import StackedDocumentReader from './components/StackedDocumentReader';
 import FlashCard from './components/FlashCard';
 import EditDictionary from './components/EditDictionary';
 import Adventure from './components/Adventure';
+import Flash from './components/Flash';
 
 
 import {time_loop} from './components/timedfunctions'
@@ -83,6 +84,7 @@ const App = () => {
         <Route path="/video" element={<VideoPlayer/>} />
         <Route path="/editdictionary" element={<EditDictionary />} />
         <Route path="/output" element={<OutputTraining />} />
+        <Route path="/flashcard" element={<Flash />} />
         
     </Routes>
     </UserContext.Provider>

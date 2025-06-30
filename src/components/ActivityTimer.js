@@ -38,10 +38,15 @@ class ActivityTimer {
     }
 
     start(newActivityName) {
+        /*
         if (!this.isPaused) {
             console.log(`Calling activity but activity already started: ${newActivityName}`);
             return;
         }
+        */
+       if (this.timerInterval != null) 
+            clearInterval(this.timerInterval);
+
         this.activityName = newActivityName;
         this.isPaused = false;
         
@@ -101,23 +106,29 @@ class ActivityTimer {
         return !this.isPaused;
     }
 
-    getStatus() {
-        const status = {
+    async getStatus() {
+        let actime = 0;
+        try {
+            actime = await this.activityManager.getAccumulatedTime(this.activityName);
+            console.log(`Accumulated time for !!activity ${this.activityName}:`, actime);
+            let totalactime = actime['total_accumulated_time'] || 0;
+            actime = actime['accumulated_time'] || 0; // Ensure actime is a number
+            const status = {
+            actime: actime,
+            totalactime: totalactime, 
             activity: this.activityName,
             isPaused: this.isPaused,
             lastHeartbeat: new Date(this.lastHeartbeat),
             elapsedSinceHeartbeat: Date.now() - this.lastHeartbeat
-        };
+             };
         console.log(`Status retrieved:`, status);
         return status;
+
+        } catch (error) {
+            console.error('Failed to get accumulated time:', error);
+        }  
     }
     
-    changeActivityName(newActivityName) {
-        this.activityName = newActivityName;
-        this.pause();
-        this.lastHeartbeat = null;
-        ActivityTimer.instance = this; }
-
 }
 
 export {getActivityTimer}

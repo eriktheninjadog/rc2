@@ -409,21 +409,6 @@ const OutputTraining = () => {
       );
     }
 
-    const  threeExamples = async () => {
-      const clipboardText = await navigator.clipboard.readText();
-      let tmpquestion = 'Create 3 sentences in C1 level Cantonese containing this chunk: ' + clipboardText + ". Return these together with english translation in json format like this: [{\"english\":ENGLISH_SENTENCE,\"chinese\":CANTONESE_TRANSLATION}].Only respond with the json structure."
-      createexamples(tmpquestion,'A1', result => {
-        let baba = result;
-        console.log(baba);
-        let gdb = window.gamedatabase;   
-        for(var i =0 ; i < baba.length;i++) {
-            addOutputExercise(baba[i]['english'], JSON.stringify( baba[i]['chinese']),chosenLevel,2,1,0,Date.now(), result => {});
-           // gdb.push( {tokens:baba[i]['chinese'],english:baba[i]['english'] }   )
-        }
-        window.gamedatabase = gdb;
-      });
-    }
-
   const createSentences = () => {
   // Get tokens and convert to text
       let mytokens = tokens;

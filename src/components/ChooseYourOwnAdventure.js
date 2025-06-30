@@ -18,6 +18,7 @@ const ChooseYourOwnAdventure = () => {
     const navigate = useNavigate();
     const [tokens, setTokens] = useState([]);
     const [illustration, setIllustration] = useState(null);
+    
 
 
 
@@ -60,8 +61,8 @@ const ChooseYourOwnAdventure = () => {
                     setIllustration(`https://chinese.eriktamm.com/adventures/${promptSignature}.jpg`);
                 }
                 setTokensFromNode(storyData,storyData['startNode']);
-                getActivityTimer().changeActivityName('listening');
-                getActivityTimer().start('listening');
+                getActivityTimer().changeActivityName('Adventure');
+                getActivityTimer().start('Adventure');
             } catch (err) {
                 setError(err.message);
             } finally {

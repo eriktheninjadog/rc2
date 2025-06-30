@@ -1,14 +1,15 @@
 //Adventure.js
 
 
-import ChooseYourOwnAdventure from "./ChooseYourOwnAdventure";
+import FlashcardGame from "./FlashCardGame";
+import React from "react";
 import { Button, Container } from "react-bootstrap";
 
 import { ActivityTimeDisplay } from "./ActivityTimeDisplay";
 
 import Navigation from "./Navigation";
 
-const Adventure = ()=> {
+const Flash = ()=> {
 
     return (
 
@@ -16,14 +17,14 @@ const Adventure = ()=> {
 <div>
 <Container>
     <Navigation></Navigation>
-<h1>Adventure</h1> 
+<h1>Flashcard</h1> 
 <ActivityTimeDisplay activityName="Adventure" />
 <br></br>
-<ChooseYourOwnAdventure></ChooseYourOwnAdventure>
+<FlashcardGame/>
 </Container>
 </div>
 
     );
 }
 
-export default Adventure;
+export default Flash;

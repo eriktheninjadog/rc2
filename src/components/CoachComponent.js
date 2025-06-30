@@ -17,11 +17,14 @@ import StudyGoals from "./backendapi/studygoals";
 import FlashcardDeck from "./FlashCardComponent";
 import { ConcurrentModificationException } from "@aws-sdk/client-translate";
 import { getInterestFromStack } from "./backendapi/remotestack";
+import { WordListManager } from "./backendapi/WordlistManager";
+import { ActivityTimeDisplay } from "./ActivityTimeDisplay";
 
 
 const CoachComponent = ()=> {
 
     const [tokens,setTokens] = useState([]);
+    const [activityName,setActivityName] = useState('coaching');
 
     const [currentDeck, setCurrentDeck] = useState([
         { id: 1, front: 'React', back: 'A JavaScript library for building user interfaces' },
@@ -137,6 +140,116 @@ function addToCards() {
 // extractChineseSentences("这是一个中文句子。This is an English sentence. 我喜欢学习中文。")
 //   .then(sentences => console.log(sentences))
 //   .catch(error => console.error(error));
+function sendMessageToServer(message) {
+    return fetch('https://chinese.eriktamm.com/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            session_id: window.sessionId,
+            message: message
+        })
+    })
+    .then(r => r.json())
+    .then(data => {
+        const chat = document.getElementById('chat');
+        chat.innerHTML += `<div class="message"><b>Assistant:</b> ${data.response}</div>`;
+        tokenizeChinese(data.response,(result) => {
+            if  (result == null) {
+              console.log("No tokens");
+              setTokens(["no tokens"]);
+            } else {
+                setTokens(result);
+            }
+        });
+        chat.scrollTop = chat.scrollHeight;
+        return data;
+    });    
+}
+
+function getRandomCNNText() {
+    return fetch('https://chinese.eriktamm.com/api/random_cnn_article', {
+        method: 'GET',
+        headers: {
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+        return response.json();
+    })
+    .then(data => {
+        return data;
+    })
+    .catch(error => {
+        console.error('Error fetching random CNN text:', error);
+        throw error;
+    });
+}
+
+function showList() {
+    var wl = new WordListManager();
+    wl.getList("nextadventure").then(list => { 
+        let magic = [];
+        list.forEach((word) => {
+            magic.push([word,
+                () => {
+                    console.log('clicked word: ' + word);
+                    let wl = new WordListManager();
+                    wl.deleteWord("nextadventure", word).then(() => {
+                        console.log('deleted word: ' + word);
+                        showList();
+                    }).catch(error => {
+                        console.error('Error deleting word:', error);
+                        sendMessageToServer("I could not delete the word " + word + " from the list");
+                    })
+                }
+            ]);
+        });
+        setTokens(magic); 
+});
+}
+
+function guessingGame() {
+    let wl = new WordListManager();
+    getActivityTimer().changeActivityName("guessinggame");
+    setActivityName("guessinggame");
+
+    wl.getList("nextadventure").then(list => {
+        // Get random word from the list
+        console.log('gotten wordlist ' + list);
+        const randomIndex = Math.floor(Math.random() * list.length);
+        const randomWord = list[randomIndex];
+
+        // Create a prompt for the guessing game
+        const prompt = `Let's play a guessing game! Pick a word from the following wordlist and give me a hints and clues about this word without revealing it directly or its characters directly. Use hints as synonyms, similar sounding words, parts of the character, sentences with the word hidden etc. Do not give the characters or the word!!! Keep guiding the user but after 3 tries pick new word. If the user is right, congratulate and pick a new word. Repeat the words I fail on after 3 new words. Here is the wordlist ` + list;
+
+        sendMessageToServer(prompt)
+            .then(response => {
+                console.log('Guessing game started with word:', randomWord);
+            })
+            .catch(error => {
+                console.error('Error starting guessing game:', error);
+            });
+
+
+    });
+}
+
+function discussArticle() {
+    setActivityName("articlediscuss");
+    getActivityTimer().changeActivityName("articlediscuss");
+    getRandomCNNText().then(articleText => {
+        const prompt = `Take the following article, translate it into Traditional Chinese and return to the user and start a discussion about the article. 
+        Note that the discussion with the user should be in spoken Cantonese. 
+        Help the user by correcting mistakes he might make and suggest improvements. 
+        if the user is struggling, shift into using easier sentences and vocab.
+        Here is the article:  ` + articleText['result']
+        sendMessageToServer(prompt);
+        });
+
+}
 
 function sendMessage() {
     const input = document.getElementById('input');
@@ -213,6 +326,20 @@ function updateModel(model) {
     });
 }
 
+
+function clearWords() {
+    getActivityTimer().heartbeat();
+    console.log("clearing words");
+    let w = new WordListManager();
+    w.deleteList    ("nextadventure").then(() => {
+        console.log("cleared words");
+        document.getElementById('input').value = 'Words cleared';
+    }).catch(error => {
+        console.error('Error clearing words:', error);
+        document.getElementById('input').value = 'Error clearing words';
+    });
+}
+
 const mykeyhandler = (event) => {}
 
 function updateSystemPrompt(prompt) {
@@ -230,182 +357,6 @@ function updateSystemPrompt(prompt) {
 }
 
 
-class PinyinLookup {
-    constructor(inputId) {
-        this.inputId = inputId;
-        this.input = document.getElementById(inputId);
-        this.popup = null;
-        this.selectedIndex = 0;
-        this.pinyinMap = null;
-        this.loadingIndicator = document.getElementById('loading-indicator');
-        this.init();
-    }
-
-    async init() {
-        try {
-            await this.loadPinyinData();
-            this.createPopup();
-            this.input = document.getElementById(this.inputId);
-
-            console.log('this.input ' + this.input);
-
-            this.input.addEventListener('input', (e) => this.handleInput(e));
-            this.input.addEventListener('keydown', (e) => this.handleKeyDown(e));
-            this.input.removeAttribute('disabled');
-            this.input.placeholder = 'Type pinyin...';
-            this.loadingIndicator.style.display = 'none';
-        } catch (error) {
-            console.error('Failed to load pinyin data:', error);
-            this.loadingIndicator.textContent = 'Error loading pinyin data. Please refresh the page.';
-        }
-    }
-
-    async loadPinyinData() {
-        try {
-            const response = await fetch('https://chinese.eriktamm.com/api/jyutpingdict');
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            console.log('pinyin data loaded' );
-            window.pinyinMap = await response.json()
-        } catch (error) {
-            throw new Error('Failed to load pinyin data: ' + error.message);
-        }
-    }
-
-    createPopup() {
-        this.popup = document.createElement('div');
-        this.popup.className = 'pinyin-popup';
-        document.body.appendChild(this.popup);
-    }
-
-    removeNonAlphaCharacters(str) {
-        // Use a regular expression to replace all characters that are not in the range a-z
-        return str.replace(/[^a-z]/g, '');
-    }
-    
-
-    handleInput(event) {
-        const currentText = event.target.value;
-        if (currentText.indexOf('1') === -1) {
-            return;
-        }
-        console.log('we are handling inputevent');
-        //const lastWord = currentText.split(' ').pop().toLowerCase();
-        const lastWord = this.removeNonAlphaCharacters(currentText);
-        if (!lastWord) {
-            this.popup.style.display = 'none';
-            return;
-        }
-        event.target.value=event.target.value.replace('1', '');
-        const matches = this.getMatches(lastWord);
-        if (matches == null) {
-            console.log('matches is null')
-        }
-
-        if (matches.length > 0) {
-            this.showPopup(matches, event.target);
-        } else {
-            this.popup.style.display = 'none';
-        }
-    }
-
-    getMatches(inputStr) {
-    if (window.pinyinMap == null) {
-        console.log('pinyinMap is null');
-        return [];
-        }
-    console.log('pinyinMap is not null');
-    if (window.pinyinMap['result'].hasOwnProperty(inputStr)) {
-        return window.pinyinMap['result'][inputStr];
-        }
-    else {
-        return [];
-        }
-    }
-
-    showPopup(characters, inputElement) {
-        getActivityTimer().heartbeat();
-
-        this.popup.innerHTML = '';
-        characters.forEach((char, index) => {
-            const div = document.createElement('div');
-            div.className = 'pinyin-item';
-            div.textContent = char;
-            div.onclick = () => this.selectCharacter(char, inputElement);
-            if (index === this.selectedIndex) {
-                div.classList.add('selected');
-            }
-            this.popup.appendChild(div);
-        });
-
-        const rect = inputElement.getBoundingClientRect();
-        this.popup.style.display = 'block';
-        this.popup.style.top = `${rect.bottom + window.scrollY}px`;
-        this.popup.style.left = `${rect.left + window.scrollX}px`;
-    }
-
-    removeLowercaseLetters(str) {
-        return str.replace(/[a-z]/g, '');
-    }
-
-    selectCharacter(character, inputElement) {
-        const currentText = inputElement.value;
-        inputElement.value = this.removeLowercaseLetters(currentText + character);
-        this.popup.style.display = 'none';
-        this.selectedIndex = 0;
-        inputElement.focus();
-    }
-
-    handleKeyDown(event) {
-        const items = this.popup.querySelectorAll('.pinyin-item');
-        if (items.length === 0) return;
-
-        switch (event.key) {
-            case 'ArrowDown':
-                this.dontRepeat = false
-                this.selectedIndex = (this.selectedIndex + 1) % items.length;
-                this.updateSelection();
-                event.preventDefault();
-                break;
-            case 'ArrowUp':
-                this.dontRepeat = false
-                this.selectedIndex = (this.selectedIndex - 1 + items.length) % items.length;
-                this.updateSelection();
-                event.preventDefault();
-                break;
-            /*
-            case '1':
-                let inputElement = document.getElementById(this.inputId);
-                this.popup.style.display = 'none';
-                this.selectedIndex = 0;
-                inputElement.focus();        
-                event.preventDefault();
-                break;
-              */  
-            case 'Enter':
-                if (items[this.selectedIndex]) {
-                    const selectedChar = items[this.selectedIndex].textContent;
-                    this.selectCharacter(selectedChar, this.input);
-                    this.dontRepeat = true;
-                    this.popup.style.display = 'none';
-                    event.preventDefault();
-                }
-                break;
-        }
-    }
-
-    updateSelection() {
-        const items = this.popup.querySelectorAll('.pinyin-item');
-        items.forEach((item, index) => {
-            if (index === this.selectedIndex) {
-                item.classList.add('selected');
-            } else {
-                item.classList.remove('selected');
-            }
-        });
-    }
-}
 
 
 const perplexity = () => {
@@ -418,7 +369,7 @@ const perplexity = () => {
 
 
 function restartTimer() {
-    getActivityTimer().start('writing');
+    getActivityTimer().start(activityName);
     //ActivityTimer().
 }
 
@@ -435,7 +386,7 @@ async function fetchWritingTime() {
 
         if (getActivityTimer().isPaused ==true ) {
             document.getElementById('dailyTime').innerHTML = '<a href="#" onclick="window.restartTimer();">paused</a>';
-            document.getElementById('dailyTime').onclick = getActivityTimer().start('writing');
+            //document.getElementById('dailyTime').onclick = getActivityTimer().start('writing');
         }
         else {
             document.getElementById('dailyTime').innerText = formatTime(data.dailyTime);
@@ -472,7 +423,7 @@ useEffect(() => {
         }
     });
     
-    // Add event listener to update textarea when selection changes
+    // Add event listener to updchanges
     selectElement.addEventListener('change', (e) => {
         const vocabTypeInput = document.getElementById('vocabtype');
         vocabTypeInput.value = e.target.value.trim();
@@ -591,7 +542,6 @@ function formatTime(milliseconds) {
     return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 }
 
-const pinyinLookup = new PinyinLookup('input');
 
 window.settokens = (toks) => {
     console.log('settokens');
@@ -623,8 +573,10 @@ if (window.sessionId == null)
             </button>
         <br></br><input type='text' id="englishinput" size={38}></input><br></br>
     <textarea id="input" onChange={()=>{getActivityTimer().heartbeat();}} placeholder="Type your message..." cols={40} rows={5}></textarea>
-    <button onClick={()=>{sendMessage();}}>Send</button> <button onClick={()=>{perplexity();}}>perplexity</button><button onClick={()=>{ window.pinyinMap = null;  pinyinLookup.loadPinyinData();}}>Load</button>
+    <button onClick={()=>{sendMessage();}}>Send</button> <button onClick={()=>{perplexity();}}>perplexity</button><button onClick={()=>{ discussArticle();}}>Article</button><button onClick={()=>{ guessingGame();}}>Guess</button><button onClick={()=>{clearWords();}}>Clear Words</button><button onClick={()=>{showList();}}>Show List</button>
     <div id="loading-indicator">Loading pinyin data...</div>
+    
+    <ActivityTimeDisplay activityName={activityName} />
     <div>
         <p>Total Writing Time: <div id="totalTime"></div> Daily Writing Time: <div id="dailyTime"></div></p>
     </div>

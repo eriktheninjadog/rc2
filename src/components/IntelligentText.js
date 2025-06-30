@@ -328,7 +328,6 @@ const IntelligentText = (props)=> {
 
     const addToNextAdventure = () => {
       let chinese = window.lastWordChinese;
-      alert(chinese);
       let wlm = new WordListManager();
       wlm.addWord('nextadventure',chinese)
         .then(result => {
@@ -337,7 +336,6 @@ const IntelligentText = (props)=> {
         })
         .catch(error => {
           console.error('Error adding to next adventure:', error);
-          alert('Error adding to next adventure: ' + error.message);
         });
     }
 
@@ -429,15 +427,13 @@ const IntelligentText = (props)=> {
                 {
                 props.tokens.map(
                     (value,index,array) => {
-                        if (value == '~') {
-                            window.code = !window.code;
-                            return (<span></span>)
+                        if (Array.isArray(value)) {
+                          console.log('array value ' + value);
+                            return (<button onClick={()=> value[1]()}>{value[0]}</button>)
                         }
-                        if (window.code) {
-                            return (<span dangerouslySetInnerHTML={{__html: value}}></span>);
-                        }
+                        
                         if (value.indexOf('href') !=-1) {
-                          return(<span dangerouslySetInnerHTML={{__html: value}}></span>);  
+                          return(<span dangeroulySetInnerHTML={{__html: value}}></span>);  
                         }
                         if (value=='\n')
                             return (<a onClick={innerMenu}>*<br></br></a>);
@@ -450,7 +446,6 @@ const IntelligentText = (props)=> {
         onClick={()=> {}} 
         icon="+" 
       />
-
             <button onClick={()=>{render(false);}}>render</button>
             <button onClick={()=>{render(true);}}>add to render</button>
             <button onClick={()=>{cloze();}}>cloze</button>
@@ -517,7 +512,7 @@ const IntelligentText = (props)=> {
                   const prompts = [
                     "Translate this text to simple Cantonese,",
                     "Explain this text in Cantonese",
-                    "Give examples similar to this text in Cantonese",
+                    "Make a vocab list of important words together with an explanation in simple cantonese and some synonyms. After the wordlist, make a list of questions to make sure that the reader has understood the words",
                     "Create a dialogue based on this text in Cantonese",
                     "Summarize this text in Cantonese",
                     `"Act as a language tutor analyzing the following short text for language learners. Extract and list the most important grammar points (e.g., verb tenses, sentence structures, prepositions, etc.) and key vocabulary (e.g., high-frequency words, challenging terms, or contextually essential phrases) from the text below.
@@ -566,7 +561,7 @@ Focus on clarity and usefulness for learners!"
                 <option value="" disabled selected>Quick prompts</option>
                 <option value="0">Translate</option>
                 <option value="1">Explain</option>
-                <option value="2">Examples</option>
+                <option value="2">Wordlist</option>
                 <option value="3">Dialogue</option>
                 <option value="4">Summarize</option>
                 <option value="5">Points</option>

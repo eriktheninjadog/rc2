@@ -1,0 +1,88 @@
+/* src/FlashcardGame.css */
+.flashcard-container {
+  max-width: 500px;
+  margin: 2rem auto;
+  padding: 2rem;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  text-align: center;
+  font-family: sans-serif;
+}
+
+.image-container {
+  margin: 1rem 0;
+  background-color: #f0f0f0;
+  border-radius: 8px;
+  padding: 1rem;
+}
+
+.image-container img {
+  max-width: 100%;
+  height: auto;
+  max-height: 250px;
+  border-radius: 4px;
+}
+
+.guess-form {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 1rem;
+}
+
+.guess-form input {
+  padding: 10px;
+  font-size: 1rem;
+  border-radius: 4px;
+  border: 1px solid #ccc;
+  width: 60%;
+}
+
+.guess-form button {
+  padding: 10px 20px;
+  font-size: 1rem;
+  border: none;
+  border-radius: 4px;
+  background-color: #007bff;
+  color: white;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.guess-form button:hover {
+  background-color: #0056b3;
+}
+
+.guess-form button:disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
+}
+
+.feedback {
+  margin-top: 1rem;
+  font-size: 1.1rem;
+  font-weight: bold;
+}
+
+.feedback.correct {
+  color: #28a745;
+}
+
+.feedback.incorrect {
+  color: #dc3545;
+}
+
+.hint-container {
+  margin-top: 1.5rem;
+  padding: 1rem;
+  background-color: #fffbe6;
+  border: 1px solid #ffeeba;
+  border-radius: 4px;
+  text-align: left;
+}
+
+.hint-container h4 {
+  margin-top: 0;
+  color: #856404;
+}

@@ -6,10 +6,30 @@ class ActivityTimeManager {
 
     constructor(baseUrl) {
         this.baseUrl = baseUrl;
+        this.lastActivity = null;
+        this.lastTime = null;
     }
+
 
     async addTimeToActivity(activityName, millisecondsToAdd) {
         const url = `${this.baseUrl}/add_time`;
+        if (this.lastTime == null) {
+            this.lastActivity = activityName;
+            this.lastTime = Date.now();
+        } else {
+            if (this.lastActivity !== activityName) {
+                millisecondsToAdd = Date.now() - this.lastTime();
+                this.lastActivity = activityName;
+                this.lastTime = Date.now();
+            } else {
+                this.lastActivity = activityName;
+                this.lastTime = null;
+            }
+        }
+        if (millisecondsToAdd > 30000) {
+            millisecondsToAdd = 30000;
+        }
+        // 583307
         const response = await fetch(url, {
             method: 'POST',
             headers: {
